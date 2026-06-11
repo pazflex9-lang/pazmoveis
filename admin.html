@@ -402,6 +402,7 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
         <span class="sidebar-label">Aparência</span>
         <button class="sidebar-btn" onclick="goPage('loja')"><span class="icon">🏪</span> Loja</button>
         <button class="sidebar-btn" onclick="goPage('banners')"><span class="icon">🖼️</span> Banners</button>
+        <button class="sidebar-btn" onclick="goPage('banners-inter')"><span class="icon">🖼️</span> Banners Intermediários</button>
         <button class="sidebar-btn" onclick="goPage('hero')"><span class="icon">✨</span> Hero</button>
         <button class="sidebar-btn" onclick="goPage('categorias')"><span class="icon">🏷️</span> Categorias</button>
         <button class="sidebar-btn" onclick="goPage('footer')"><span class="icon">🦶</span> Rodapé</button>
@@ -514,6 +515,10 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
           <div class="field">
             <label>Número WhatsApp (com DDI e DDD)</label>
             <input type="tel" id="cfgWhats" value="5571999999999" placeholder="5571999999999">
+          </div>
+          <div class="field">
+            <label>Link do Instagram</label>
+            <input type="url" id="cfgInsta" value="" placeholder="https://instagram.com/sualojanome">
           </div>
           <div class="field">
             <label>Texto da faixa de oferta (topbar)</label>
@@ -642,8 +647,55 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
           </div>
           <div class="banner-grid" id="bannerGrid"></div>
         </div>
+
+        <div class="card" style="margin-top:24px">
+          <h3>🖼️ Banner Rodapé</h3>
+          <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
+            Exibido entre a listagem de produtos e o rodapé. Tamanho ideal: <strong>1440×200px</strong>.
+          </p>
+          <div id="bbPreview" style="margin-bottom:12px;display:none">
+            <div style="position:relative;display:inline-block;width:100%">
+              <img id="bbPreviewImg" src="" style="width:100%;height:100px;object-fit:cover;border-radius:8px;display:block">
+              <button onclick="removeBannerBottom()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:13px">✕</button>
+            </div>
+          </div>
+          <div class="upload-zone" id="bbUploadZone" onclick="document.getElementById('bbInput').click()">
+            <div class="icon">🖼️</div>
+            <h4>Clique para fazer upload</h4>
+            <p>JPG, PNG ou WebP — 1440×200px</p>
+            <input type="file" id="bbInput" accept="image/*" style="display:none" onchange="uploadBannerBottom(event)">
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label>Link ao clicar (opcional)</label>
+            <input type="url" id="bbLink" placeholder="https://..." value="">
+          </div>
+          <button class="btn-save" onclick="saveBannerBottom()" style="margin-top:16px;width:100%">💾 Salvar Banner Rodapé</button>
+        </div>
       </div>
 
+
+      <!-- BANNERS INTERMEDIÁRIOS -->
+      <div class="page" id="page-banners-inter">
+        <div class="page-title">🖼️ Banners Intermediários</div>
+        <div class="card">
+          <h3>Modo de exibição</h3>
+          <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
+            <strong>1 banner:</strong> Full width (1440×200px) &nbsp;|&nbsp;
+            <strong>3 banners:</strong> Lado a lado (480×200px cada).
+          </p>
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;background:var(--gray-50);border-radius:10px;padding:14px 18px;border:1px solid var(--gray-200)">
+            <span style="font-size:14px;font-weight:700">Modo:</span>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700">
+              <input type="radio" name="biModo" value="1" id="biModo1" onchange="renderBIUploadZones()" checked> 1 banner full width
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700">
+              <input type="radio" name="biModo" value="3" id="biModo3" onchange="renderBIUploadZones()"> 3 banners lado a lado
+            </label>
+          </div>
+          <div id="biUploadZones"></div>
+          <button class="btn-save" onclick="saveBannersInter()" style="margin-top:20px;width:100%">💾 Salvar Banners Intermediários</button>
+        </div>
+      </div>
       <!-- HERO -->
       <div class="page" id="page-hero">
         <div class="page-title">✨ Seção Hero</div>
@@ -935,6 +987,7 @@ function goPage(page) {
   if (page === 'novidades') renderSelectedDests('novidades');
   if (page === 'precinho')  renderSelectedDests('precinho');
   if (page === 'ambiente')  { renderAmbienteAdminTabs(); renderAmbienteAdminContent(ambienteCurrentCat); }
+  if (page === 'banners-inter') initBIPage();
 }
 
 // ── CSV / PRODUTOS ─────────────────────────────────────
@@ -1614,6 +1667,103 @@ async function removeBanner(i) {
   showToast('🗑️ Banner removido!');
 }
 
+
+// ── BANNERS INTERMEDIÁRIOS ──────────────────────────────
+let bannersInter = [];
+let bannersInterModo = '1';
+
+function initBIPage() {
+  const m = document.querySelector('input[name="biModo"][value="'+bannersInterModo+'"]');
+  if(m) m.checked = true;
+  renderBIUploadZones();
+}
+
+function renderBIUploadZones() {
+  bannersInterModo = (document.querySelector('input[name="biModo"]:checked')||{value:'1'}).value;
+  const count = bannersInterModo === '1' ? 1 : 3;
+  while(bannersInter.length < count) bannersInter.push({url:'', link:''});
+  const label = count === 1 ? '1440×200px' : '480×200px';
+  const zones = document.getElementById('biUploadZones');
+  if(!zones) return;
+  zones.innerHTML = Array.from({length: count}, (_,i) => {
+    const b = bannersInter[i] || {url:'', link:''};
+    return `<div style="margin-bottom:20px;padding:16px;background:var(--gray-50);border-radius:10px;border:1px solid var(--gray-200)">
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--gray-700)">Banner ${i+1} (${label})</div>
+      ${b.url ? `<div style="margin-bottom:10px;position:relative">
+        <img src="${b.url}" style="width:100%;max-height:80px;object-fit:cover;border-radius:6px;display:block">
+        <button onclick="removeBIBanner(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px">✕</button>
+      </div>` : ''}
+      <div class="upload-zone" onclick="document.getElementById('biInput${i}').click()" style="padding:16px;margin-bottom:10px">
+        <div class="icon" style="font-size:24px;margin-bottom:4px">🖼️</div>
+        <h4 style="font-size:13px;margin-bottom:2px">${b.url ? 'Substituir imagem' : 'Clique para fazer upload'}</h4>
+        <p>JPG, PNG ou WebP</p>
+        <input type="file" id="biInput${i}" accept="image/*" style="display:none" onchange="uploadBI(event,${i})">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:var(--gray-600);display:block;margin-bottom:4px">Link ao clicar (opcional)</label>
+        <input type="text" placeholder="https://..." value="${b.link||''}" oninput="bannersInter[${i}]={...bannersInter[${i}],link:this.value}"
+          style="width:100%;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:6px;font-size:13px;box-sizing:border-box">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function removeBIBanner(idx) {
+  bannersInter[idx] = {url:'', link: (bannersInter[idx]||{}).link||''};
+  renderBIUploadZones();
+}
+
+function uploadBI(e, idx) {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    while(bannersInter.length <= idx) bannersInter.push({url:'', link:''});
+    bannersInter[idx] = {...bannersInter[idx], url: ev.target.result};
+    renderBIUploadZones();
+  };
+  r.readAsDataURL(file);
+  e.target.value = '';
+}
+
+async function saveBannersInter() {
+  bannersInterModo = (document.querySelector('input[name="biModo"]:checked')||{value:'1'}).value;
+  const count = bannersInterModo === '1' ? 1 : 3;
+  const bans = bannersInter.slice(0, count);
+  if(!bans.some(b => b.url)) { showToast('Adicione pelo menos 1 imagem', 'error'); return; }
+  const payload = { modo: bannersInterModo, banners: bans };
+  await db.setConfigs({ banners_intermediarios: JSON.stringify(payload) });
+  showToast('Banners intermediarios salvos!', 'success');
+}
+
+
+// ── BANNER BOTTOM ───────────────────────────────────────────
+let bannerBottomData = { url: '', link: '' };
+
+function uploadBannerBottom(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    bannerBottomData.url = ev.target.result;
+    const prev = document.getElementById('bbPreview');
+    const img  = document.getElementById('bbPreviewImg');
+    if(prev && img){ img.src = ev.target.result; prev.style.display = 'block'; }
+  };
+  r.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function removeBannerBottom() {
+  bannerBottomData.url = '';
+  const prev = document.getElementById('bbPreview');
+  if(prev) prev.style.display = 'none';
+}
+
+async function saveBannerBottom() {
+  bannerBottomData.link = (document.getElementById('bbLink')||{}).value || '';
+  await db.setConfigs({ banner_bottom: JSON.stringify(bannerBottomData) });
+  showToast('Banner rodapé salvo!', 'success');
+}
+
 // ── HERO ───────────────────────────────────────────────
 let heroBg = 'linear-gradient(135deg,#0D47A1,#1565C0 50%,#D32F2F)';
 function setHeroBg(bg) { heroBg=bg; showToast('Fundo selecionado!'); }
@@ -1783,10 +1933,11 @@ async function saveLoja() {
   await db.setConfigs({
     loja_nome:     document.getElementById('cfgNome').value,
     loja_slogan:   document.getElementById('cfgSlogan').value,
-    loja_whatsapp: document.getElementById('cfgWhats').value,
-    loja_topbar:   document.getElementById('cfgTopbar').value,
-    loja_cnpj:     document.getElementById('cfgCNPJ').value,
-    loja_logo:     logoDataUrl || '',
+    loja_whatsapp:  document.getElementById('cfgWhats').value,
+    loja_instagram: document.getElementById('cfgInsta').value,
+    loja_topbar:    document.getElementById('cfgTopbar').value,
+    loja_cnpj:      document.getElementById('cfgCNPJ').value,
+    loja_logo:      logoDataUrl || '',
   });
   hideLoading();
   showToast('✅ Loja salva no Supabase!', 'success');
@@ -1827,7 +1978,8 @@ async function loadConfig() {
     // Loja
     if(cfg.loja_nome)     document.getElementById('cfgNome').value     = cfg.loja_nome;
     if(cfg.loja_slogan)   document.getElementById('cfgSlogan').value   = cfg.loja_slogan;
-    if(cfg.loja_whatsapp) document.getElementById('cfgWhats').value    = cfg.loja_whatsapp;
+    if(cfg.loja_whatsapp)  document.getElementById('cfgWhats').value = cfg.loja_whatsapp;
+    if(cfg.loja_instagram) document.getElementById('cfgInsta').value = cfg.loja_instagram;
     if(cfg.loja_topbar)   document.getElementById('cfgTopbar').value   = cfg.loja_topbar;
     if(cfg.loja_cnpj)     document.getElementById('cfgCNPJ').value     = cfg.loja_cnpj;
     if(cfg.loja_logo && cfg.loja_logo !== '') {
@@ -1894,6 +2046,23 @@ async function loadConfig() {
     if(cfg.destaques_ofertas)  try { selectedDests.ofertas   = JSON.parse(cfg.destaques_ofertas);  } catch(e){}
     if(cfg.destaques_novidades)try { selectedDests.novidades  = JSON.parse(cfg.destaques_novidades);} catch(e){}
     if(cfg.destaques_precinho) try { selectedDests.precinho   = JSON.parse(cfg.destaques_precinho); } catch(e){}
+    // Banner Bottom
+    if(cfg.banner_bottom) try {
+      const bb = JSON.parse(cfg.banner_bottom);
+      if(bb && bb.url) {
+        bannerBottomData = bb;
+        const prev = document.getElementById('bbPreview');
+        const img  = document.getElementById('bbPreviewImg');
+        const link = document.getElementById('bbLink');
+        if(prev && img){ img.src = bb.url; prev.style.display = 'block'; }
+        if(link) link.value = bb.link || '';
+      }
+    } catch(e){}
+    // Banners Intermediarios
+    if(cfg.banners_intermediarios) try {
+      const bic = JSON.parse(cfg.banners_intermediarios);
+      if(bic){ bannersInterModo=bic.modo||'1'; bannersInter=bic.banners||[]; }
+    } catch(e){}
     // Ambiente picks
     AMBIENTE_CATS_ADMIN.forEach(cat => {
       const key = 'ambiente_'+cat.replace(/[^a-zA-Z0-9]/g,'_');
