@@ -1099,7 +1099,7 @@ const db = {
     const r=await fetch(url,{method:'POST',headers:{..._getH(),'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(Array.isArray(data)?data:[data])});
     return r.ok?r.json():null;
   },
-  async update(t, data, f) { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'PATCH',headers:_getH(),body:JSON.stringify(data)}); return r.ok?r.json():null; },
+  async update(t, data, f) { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'PATCH',headers:{..._getH(),'Prefer':'return=representation'},body:JSON.stringify(data)}); return r.ok?(r.status===204?true:r.json()):null; },
   async delete(t, f) { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'DELETE',headers:_getH()}); return r.ok; },
   async getConfig() { const rows=await this.get('configuracoes','select=chave,valor'); const cfg={}; rows.forEach(r=>cfg[r.chave]=r.valor); return cfg; },
   async setConfigs(obj) { const rows=Object.entries(obj).map(([chave,valor])=>({chave,valor:String(valor),updated_at:new Date().toISOString()})); return this.upsert('configuracoes',rows,'chave'); },
@@ -1681,16 +1681,11 @@ async function bulkAction(acao) {
       const novoStatus = acao === 'ativar' ? 'Ativo' : 'Inativo';
       // Atualiza localmente
       allProducts.forEach(p => { if (selectedCods.has(p.cod)) p.status = novoStatus; });
-      // Upsert em lote no Supabase
+      // Atualiza apenas o status no banco — evita risco de duplicatas via upsert
       for (let i = 0; i < cods.length; i += LOTE) {
-        const batch = cods.slice(i, i+LOTE).map(cod => {
-          const p = allProducts.find(x => x.cod === cod);
-          return { cod, nome: p.nome, referencia: p.ref, preco: p.preco, grupo: p.grupo||'',
-            cat_pai: p.catPai, cat_filho: p.catFilho, descricao: p.descricao,
-            fotos: p.fotos, dimensoes: p.dimensoes, status: novoStatus,
-            updated_at: new Date().toISOString() };
-        });
-        await db.upsert('produtos', batch, 'cod');
+        const batch = cods.slice(i, i+LOTE);
+        await db.update('produtos', { status: novoStatus, updated_at: new Date().toISOString() },
+          `cod=in.(${batch.join(',')})`);
         showLoading(`Salvando... ${Math.min(i+LOTE, cods.length)}/${cods.length}`);
       }
       showToast(`✅ ${cods.length} produto(s) ${novoStatus === 'Ativo' ? 'ativado(s)' : 'desativado(s)'}!`, 'success');
