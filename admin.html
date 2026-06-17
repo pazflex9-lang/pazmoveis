@@ -1912,7 +1912,7 @@ async function openDuplicatasModal() {
 
     const grupos = {};
     todos.forEach(p => {
-      const key = _normNome(p.nome);
+      const key = _normNome(p.nome) + '|' + (p.grupo || '');
       if (!key) return;
       if (!grupos[key]) grupos[key] = [];
       grupos[key].push(p);
@@ -2008,7 +2008,7 @@ async function removeDupGrupo(gi, manter) {
     hideLoading();
     showToast(`✅ ${remover.length} duplicata(s) removida(s)!`, 'success');
     filterProds();
-    openDuplicatasModal();
+    closeDupModal();
   } catch(e) {
     hideLoading();
     showToast('❌ Erro ao remover duplicatas. Veja o console.', 'error');
