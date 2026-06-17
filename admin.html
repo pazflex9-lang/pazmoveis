@@ -1044,7 +1044,10 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
 
       <!-- Nome e referência -->
       <div class="field"><label>Nome do Produto</label><input type="text" id="editNome"></div>
-      <div class="field"><label>Referência</label><input type="text" id="editRef"></div>
+      <div class="field-row">
+        <div class="field" style="flex:2"><label>Referência</label><input type="text" id="editRef"></div>
+        <div class="field" style="flex:1"><label>Fornecedor</label><input type="text" id="editGrupo" placeholder="ex: Premoli"></div>
+      </div>
 
       <!-- Categoria -->
       <div class="field-row">
@@ -1097,7 +1100,8 @@ function _getH(){ return {...H, 'Authorization': `Bearer ${_authToken || SUPA_KE
 const db = {
   async get(t, p='') { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${p}`,{headers:{..._getH(),'Range':'0-9999','Prefer':'count=none'}}); return r.ok?r.json():[]; },
   async upsert(t, data, conflict='id') {
-    const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:{..._getH(),'Prefer':`resolution=merge-duplicates,return=representation`,'on_conflict':conflict},body:JSON.stringify(Array.isArray(data)?data:[data])});
+    const url = `${SUPA_URL}/rest/v1/${t}` + (conflict ? `?on_conflict=${conflict}` : '');
+    const r=await fetch(url,{method:'POST',headers:{..._getH(),'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(Array.isArray(data)?data:[data])});
     return r.ok?r.json():null;
   },
   async update(t, data, f) { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'PATCH',headers:_getH(),body:JSON.stringify(data)}); return r.ok?r.json():null; },
@@ -1235,7 +1239,7 @@ function normalizeProduct(p) {
     const cod = String(Math.abs(hash)).padStart(8,'0');
 
     // Converte preço "R$ 1.269,90" → 1269.90
-    const precoStr = (p.preco||'0').replace(/[R$\s]/g,'').replace('.','').replace(',','.');
+    const precoStr = (p.preco||'0').replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.');
     const preco = parseFloat(precoStr)||0;
 
     // Deriva categoria pelo nome
@@ -1737,6 +1741,7 @@ function editProd(idx) {
   document.getElementById('editIdx').value = allProducts.indexOf(p);
   document.getElementById('editNome').value = p.nome || '';
   document.getElementById('editRef').value = p.ref || '';
+  document.getElementById('editGrupo').value = p.grupo || '';
   document.getElementById('editCatPai').value = p.catPai || '';
   document.getElementById('editCatFilho').value = p.catFilho || '';
   document.getElementById('editPreco').value = p.preco || 0;
@@ -1755,6 +1760,7 @@ function newProd() {
   document.getElementById('editIdx').value = -1;
   document.getElementById('editNome').value = '';
   document.getElementById('editRef').value = '';
+  document.getElementById('editGrupo').value = '';
   document.getElementById('editCatPai').value = '';
   document.getElementById('editCatFilho').value = '';
   document.getElementById('editPreco').value = '';
@@ -1808,6 +1814,7 @@ async function saveProd() {
   const nome = document.getElementById('editNome').value.trim();
   if (!nome) { showToast('⚠️ Informe o nome do produto.', 'error'); return; }
 
+  const grupo    = document.getElementById('editGrupo').value.trim();
   const catPai   = document.getElementById('editCatPai').value.trim();
   const catFilho = document.getElementById('editCatFilho').value.trim();
   const dados = {
@@ -1825,12 +1832,12 @@ async function saveProd() {
   if (idx === -1) {
     // Novo produto
     const cod = 'MAN' + Date.now();
-    const novoProd = { cod, grupo: '', updatedAt: new Date().toISOString(), ...dados };
+    const novoProd = { cod, grupo, updatedAt: new Date().toISOString(), ...dados };
     closeProdModal();
     showLoading('Cadastrando produto...');
     const res = await db.upsert('produtos', {
       cod, nome: novoProd.nome, referencia: novoProd.ref,
-      preco: novoProd.preco, grupo: '', cat_pai: novoProd.catPai, cat_filho: novoProd.catFilho,
+      preco: novoProd.preco, grupo, cat_pai: novoProd.catPai, cat_filho: novoProd.catFilho,
       descricao: novoProd.descricao, fotos: novoProd.fotos,
       dimensoes: novoProd.dimensoes, status: novoProd.status,
       updated_at: novoProd.updatedAt
@@ -1864,11 +1871,13 @@ async function saveProd() {
   }
 }
 
-function toggleStatus(idx) {
+async function toggleStatus(idx) {
   const p = filteredProducts[idx];
   const ai = allProducts.indexOf(p);
-  allProducts[ai].status = allProducts[ai].status==='Ativo'?'Inativo':'Ativo';
+  const novoStatus = allProducts[ai].status === 'Ativo' ? 'Inativo' : 'Ativo';
+  allProducts[ai].status = novoStatus;
   filterProds();
+  await db.update('produtos', { status: novoStatus, updated_at: new Date().toISOString() }, `cod=eq.${p.cod}`);
 }
 
 function closeProdModal() { document.getElementById('prodModal').classList.remove('show'); }
