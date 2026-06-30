@@ -1074,13 +1074,24 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
 
 <style>
 .foto-thumb { position:relative; width:80px; height:80px; border-radius:8px; overflow:hidden; border:2px solid var(--gray-200); cursor:pointer; flex-shrink:0; }
-.foto-thumb img { width:100%; height:100%; object-fit:cover; }
+.foto-thumb img { width:100%; height:100%; object-fit:cover; transition:opacity .15s; }
+.foto-thumb img:hover { opacity:.82; }
 .foto-thumb .foto-remove { position:absolute; top:2px; right:2px; background:rgba(211,47,47,0.9); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
 .foto-thumb.principal { border-color:var(--red); border-width:3px; }
 .foto-thumb .foto-badge { position:absolute; bottom:0; left:0; right:0; background:rgba(211,47,47,0.85); color:#fff; font-size:9px; text-align:center; padding:2px; }
+#lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.86); z-index:10000; align-items:center; justify-content:center; cursor:zoom-out; }
+#lightbox.open { display:flex; }
+#lightbox img { max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 8px 48px rgba(0,0,0,.7); cursor:default; }
+#lightbox-close { position:fixed; top:16px; right:20px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:24px; line-height:1; width:40px; height:40px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+#lightbox-close:hover { background:rgba(255,255,255,.28); }
 </style>
 
 <div class="toast" id="toast"></div>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()" title="Fechar">✕</button>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+</div>
 
 <script>
 // ══════════════════════════════════════════════
@@ -1097,7 +1108,8 @@ const db = {
   async upsert(t, data, conflict='id') {
     const url = `${SUPA_URL}/rest/v1/${t}` + (conflict ? `?on_conflict=${conflict}` : '');
     const r=await fetch(url,{method:'POST',headers:{..._getH(),'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(Array.isArray(data)?data:[data])});
-    return r.ok?r.json():null;
+    if(!r.ok){ const err=await r.text(); console.error(`[db.upsert] ${t} ${r.status}:`,err); return null; }
+    return r.json();
   },
   async update(t, data, f) { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'PATCH',headers:{..._getH(),'Prefer':'return=representation'},body:JSON.stringify(data)}); return r.ok?(r.status===204?true:r.json()):null; },
   async delete(t, f) { const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'DELETE',headers:_getH()}); return r.ok; },
@@ -1507,7 +1519,7 @@ function filterProds() {
   const forn = (document.getElementById('prodFornecedorFilter').value||'').toLowerCase();
   const st  = document.getElementById('prodStatusFilter').value;
   filteredProducts = allProducts.filter(p => {
-    if (s && !p.nome.toLowerCase().includes(s) && !(p.ref||'').toLowerCase().includes(s)) return false;
+    if (s && !(p.nome||'').toLowerCase().includes(s) && !(p.ref||'').toLowerCase().includes(s)) return false;
     if (c && p.catPai !== c) return false;
     if (forn && (p.grupo||'').toLowerCase() !== forn) return false;
     if (st === 'sem_foto') return !p.fotos || p.fotos.trim() === '';
@@ -1780,7 +1792,7 @@ function renderGaleria() {
   }
   gal.innerHTML = fotos.map((url, i) => `
     <div class="foto-thumb ${i===0?'principal':''}">
-      <img src="${url}" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'80\\'><rect fill=\\'%23eee\\'/><text x=\\'50%\\' y=\\'50%\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\' font-size=\\'10\\'>Erro</text></svg>'">
+      <img src="${url}" data-url="${url}" onclick="openLightbox(this.dataset.url)" title="Ampliar" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'80\\'><rect fill=\\'%23eee\\'/><text x=\\'50%\\' y=\\'50%\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\' font-size=\\'10\\'>Erro</text></svg>'">
       ${i===0?'<div class="foto-badge">Principal</div>':''}
       <button class="foto-remove" onclick="removerFoto(${i})" title="Remover">✕</button>
     </div>
@@ -1805,6 +1817,16 @@ function removerFoto(idx) {
   renderGaleria();
 }
 
+function openLightbox(url) {
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
 async function saveProd() {
   const idx = parseInt(document.getElementById('editIdx').value);
   const nome = document.getElementById('editNome').value.trim();
@@ -1815,6 +1837,7 @@ async function saveProd() {
   const catFilho = document.getElementById('editCatFilho').value.trim();
   const dados = {
     nome,
+    grupo,                                                    // fix: grupo incluído em dados
     ref:       document.getElementById('editRef').value.trim(),
     catPai:    catPai || 'Geral',
     catFilho:  catFilho || 'Geral',
@@ -1826,18 +1849,18 @@ async function saveProd() {
   };
 
   if (idx === -1) {
-    // Novo produto
+    // Novo produto — INSERT simples (cod não tem constraint UNIQUE → ON CONFLICT falha)
     const cod = 'MAN' + Date.now();
-    const novoProd = { cod, grupo, updatedAt: new Date().toISOString(), ...dados };
+    const novoProd = { cod, updatedAt: new Date().toISOString(), ...dados };
     closeProdModal();
     showLoading('Cadastrando produto...');
     const res = await db.upsert('produtos', {
       cod, nome: novoProd.nome, referencia: novoProd.ref,
-      preco: novoProd.preco, grupo, cat_pai: novoProd.catPai, cat_filho: novoProd.catFilho,
+      preco: novoProd.preco, grupo: novoProd.grupo, cat_pai: novoProd.catPai, cat_filho: novoProd.catFilho,
       descricao: novoProd.descricao, fotos: novoProd.fotos,
       dimensoes: novoProd.dimensoes, status: novoProd.status,
       updated_at: novoProd.updatedAt
-    }, 'cod');
+    }, null);                                                 // fix: null → POST sem ON CONFLICT = INSERT
     hideLoading();
     if (res) {
       allProducts.unshift(novoProd);
@@ -1848,19 +1871,19 @@ async function saveProd() {
       showToast('⚠️ Erro ao cadastrar produto no banco.', 'error');
     }
   } else {
-    // Editar produto existente
+    // Editar produto existente — PATCH por cod (evita ON CONFLICT em coluna sem UNIQUE)
     Object.assign(allProducts[idx], dados);
     closeProdModal();
     filterProds();
     const p = allProducts[idx];
     showLoading('Salvando produto no banco...');
-    const res = await db.upsert('produtos', {
-      cod: p.cod, nome: p.nome, referencia: p.ref,
+    const res = await db.update('produtos', {                 // fix: db.update (PATCH) em vez de upsert
+      nome: p.nome, referencia: p.ref,
       preco: p.preco, grupo: p.grupo||'', cat_pai: p.catPai, cat_filho: p.catFilho,
       descricao: p.descricao, fotos: p.fotos,
       dimensoes: p.dimensoes, status: p.status,
       updated_at: new Date().toISOString()
-    }, 'cod');
+    }, `cod=eq.${p.cod}`);
     hideLoading();
     if (res) showToast('✅ Produto salvo no banco!', 'success');
     else showToast('⚠️ Erro ao salvar no banco.', 'error');
@@ -2067,7 +2090,7 @@ function renderChampSearch() {
   if (!q) { res.style.display = 'none'; return; }
 
   const matches = allProducts.filter(p =>
-    p.nome.toLowerCase().includes(q) || (p.ref||'').toLowerCase().includes(q)
+    (p.nome||'').toLowerCase().includes(q) || (p.ref||'').toLowerCase().includes(q)
   ).slice(0, 10);
 
   if (!matches.length) {
@@ -2150,7 +2173,7 @@ function renderDestSearch(tipo) {
   const q = (document.getElementById(cfg.search).value||'').toLowerCase().trim();
   const el = document.getElementById(cfg.results);
   if (!q) { el.style.display='none'; return; }
-  const matches = allProducts.filter(p => p.nome.toLowerCase().includes(q)||(p.ref||'').toLowerCase().includes(q)).slice(0,30);
+  const matches = allProducts.filter(p => (p.nome||'').toLowerCase().includes(q)||(p.ref||'').toLowerCase().includes(q)).slice(0,30);
   el.style.display = 'block';
   if (!matches.length) { el.innerHTML='<div style="padding:12px;color:var(--gray-400);font-size:13px">Nenhum produto encontrado</div>'; return; }
   el.innerHTML = matches.map(p => {
