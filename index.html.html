@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <!-- saved from url=(0045)https://paz-moveis-site.vercel.app/index.html -->
 <html lang="pt-BR" style="--red: #D32F2F; --red-dark: #B71C1C; --blue: #1565C0; --blue-dark: #0D47A1;"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
@@ -2726,7 +2726,7 @@ async function loadFromSupabase(){
     // Tenta usar cache (até 30 min)
     const cached=_loadCache();
     if(cached){
-      allProducts=cached;
+      allProducts=cached.map(p=>{const pN=normalizePai(p.catPai||'');const fN=normalizeFilho(p.catFilho||'',pN);return{...p,catPai:pN,catFilho:fN,categoria:pN};});
     } else {
       let allProds=[],from=0;const pS=1000;
       while(true){
