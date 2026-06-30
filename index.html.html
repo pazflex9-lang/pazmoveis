@@ -2741,9 +2741,7 @@ async function loadFromSupabase(){
       allProducts=allProds.map(p=>{
         const dbPai=p.cat_pai||'';
         const dbFilho=p.cat_filho||'';
-        const cat=(dbPai&&dbPai!=='Geral')
-          ?{pai:dbPai,filho:dbFilho||''}
-          :getCatPorNome(p.nome,p.url||p.referencia||'');
+        const cat={pai:dbPai,filho:dbFilho||''};
         const paiNorm=normalizePai(cat.pai);
         const filhoNorm=normalizeFilho(cat.filho,paiNorm);
         return {
