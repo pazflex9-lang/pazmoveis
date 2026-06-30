@@ -2699,7 +2699,7 @@ function getCatPorNome(nome, url=''){
 }
 
 /* ══ CACHE ══ */
-const _CACHE_KEY='paz_prod_cache';
+const _CACHE_KEY='paz_prod_cache_v3'; // v3: cache armazena rows brutos do banco, não processados
 const _CACHE_TTL=30*60*1000; // 30 min
 function _saveCache(prods){try{localStorage.setItem(_CACHE_KEY,JSON.stringify({ts:Date.now(),products:prods}));}catch(e){}}
 function _loadCache(){try{const c=JSON.parse(localStorage.getItem(_CACHE_KEY)||'null');if(c&&c.products&&c.products.length&&(Date.now()-c.ts)<_CACHE_TTL)return c.products;}catch(e){}return null;}
@@ -2723,10 +2723,23 @@ async function loadFromSupabase(){
   try{
     const cfg=await supa.getConfig();applyConfig(cfg);
 
-    // Tenta usar cache (até 30 min)
-    const cached=_loadCache();
-    if(cached){
-      allProducts=cached.map(p=>{const pN=normalizePai(p.catPai||'');const fN=normalizeFilho(p.catFilho||'',pN);return{...p,catPai:pN,catFilho:fN,categoria:pN};});
+    // Converte row bruto do banco → objeto do catálogo (normalização aplicada aqui)
+    function _mapProd(p){
+      const paiNorm=normalizePai(p.cat_pai||'');
+      const filhoNorm=normalizeFilho(p.cat_filho||'',paiNorm);
+      return {
+        cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||'',
+        preco:parseFloat(p.preco)||0,grupo:p.grupo||p.fornecedor||'',
+        catPai:paiNorm,catFilho:filhoNorm,
+        categoria:paiNorm,descricao:p.descricao||'',
+        fotos:p.fotos||'',dimensoes:p.dimensoes||'',status:p.status||'Ativo',
+      };
+    }
+
+    // Tenta usar cache (até 30 min) — cache guarda rows brutos do banco
+    const rawCached=_loadCache();
+    if(rawCached){
+      allProducts=rawCached.map(_mapProd).filter(p=>p.preco>0);
     } else {
       let allProds=[],from=0;const pS=1000;
       while(true){
@@ -2738,21 +2751,8 @@ async function loadFromSupabase(){
         allProds=allProds.concat(d);
         if(d.length<pS)break;from+=pS;
       }
-      allProducts=allProds.map(p=>{
-        const dbPai=p.cat_pai||'';
-        const dbFilho=p.cat_filho||'';
-        const cat={pai:dbPai,filho:dbFilho||''};
-        const paiNorm=normalizePai(cat.pai);
-        const filhoNorm=normalizeFilho(cat.filho,paiNorm);
-        return {
-          cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||'',
-          preco:parseFloat(p.preco)||0,grupo:p.grupo||p.fornecedor||'',
-          catPai:paiNorm,catFilho:filhoNorm,
-          categoria:paiNorm,descricao:p.descricao||'',
-          fotos:p.fotos||'',dimensoes:p.dimensoes||'',status:p.status||'Ativo',
-        };
-      }).filter(p=>p.preco>0);
-      _saveCache(allProducts);
+      _saveCache(allProds); // salva rows brutos — normalização roda sempre em _mapProd
+      allProducts=allProds.map(_mapProd).filter(p=>p.preco>0);
     }
     try{
       const cats=await supa.get('categorias','select=*');
