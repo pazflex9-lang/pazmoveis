@@ -2676,9 +2676,13 @@ async function loadFromSupabase(){
         if(d.length<pS)break;from+=pS;
       }
       allProducts=allProds.map(p=>{
-        const cat=getCatPorNome(p.nome, p.url||p.referencia||'');
+        const dbPai=p.cat_pai||'';
+        const dbFilho=p.cat_filho||'';
+        const cat=(dbPai&&dbPai!=='Geral')
+          ?{pai:dbPai,filho:dbFilho||'Geral'}
+          :getCatPorNome(p.nome,p.url||p.referencia||'');
         return {
-          cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||p.url||'',
+          cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||'',
           preco:parseFloat(p.preco)||0,grupo:p.grupo||p.fornecedor||'',
           catPai:cat.pai,catFilho:cat.filho,
           categoria:cat.pai,descricao:p.descricao||'',
@@ -3588,7 +3592,7 @@ function perfilFotoChange(e){
 }
 
 /* ══ WHATSAPP ══ */
-function zapProduct(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const msg=encodeURIComponent(`Olá! Tenho interesse no produto:\n\n*${p.nome}*\nRef: ${p.ref}\nPreço: ${formatPrice(p.preco)}\n\nPoderia me dar mais informações?`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
+function zapProduct(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const refLine=p.ref?`\nRef: ${p.ref}`:'';const msg=encodeURIComponent(`Olá! Tenho interesse no produto:\n\n*${p.nome}*${refLine}\nPreço: ${formatPrice(p.preco)}\n\nPoderia me dar mais informações?`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
 function checkoutWhatsApp(){if(!cart.length)return;const items=cart.map(c=>`• ${c.nome} (${c.qty}x) — ${formatPrice(c.preco*c.qty)}`).join('\n');const total=formatPrice(cart.reduce((s,c)=>s+c.preco*c.qty,0));const msg=encodeURIComponent(`Olá! Gostaria de fazer um pedido:\n\n${items}\n\n*Total: ${total}*`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
 
 /* ══ CHECKOUT ══ */
