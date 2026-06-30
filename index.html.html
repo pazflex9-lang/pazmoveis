@@ -2535,6 +2535,69 @@ const PER_PAGE=24;
 let WHATSAPP='5571999999999',cart=[],favorites=JSON.parse(localStorage.getItem('paz_favs')||'[]'),hiddenCats=new Set(),categoryNames={},banners=[];
 let currentAmbienteCat='';
 
+/* ══ NORMALIZAÇÃO DE CATEGORIAS ══ */
+function _normKey(s){return(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();}
+const _PAI_MAP={
+  'quarto':'Quarto',
+  'sala de estar':'Sala de Estar','sala estar':'Sala de Estar','sala':'Sala de Estar',
+  'sala de jantar':'Sala de Jantar','sala jantar':'Sala de Jantar',
+  'cozinha':'Cozinha',
+  'cama e colchao':'Cama e Colchão','cama colchao':'Cama e Colchão',
+  'eletrodomesticos':'Eletrodomésticos',
+  'escritorio':'Escritório',
+  'outros':'Outros','geral':'Outros',
+};
+const _FILHO_MAP={
+  'cama':'Camas','camas':'Camas',
+  'guarda-roupa':'Guarda-roupas','guarda-roupas':'Guarda-roupas','guarda roupas':'Guarda-roupas','guarda roupa':'Guarda-roupas','roupeiro':'Guarda-roupas',
+  'comoda':'Cômodas','comodas':'Cômodas',
+  'criado-mudo':'Criados-mudos','criado mudo':'Criados-mudos','criados-mudos':'Criados-mudos',
+  'cabeceira':'Cabeceiras','cabeceiras':'Cabeceiras',
+  'penteadeira':'Penteadeiras','penteadeiras':'Penteadeiras',
+  'beliche':'Beliches','beliches':'Beliches','bicama':'Beliches',
+  'infantil':'Infantil','berco':'Infantil','bercario':'Infantil',
+  'multiuso':'Multiuso e Sapateiras','sapateira':'Multiuso e Sapateiras','sapateiras':'Multiuso e Sapateiras','multiuso e sapateiras':'Multiuso e Sapateiras',
+  'acessorios':'Acessórios','acessorios de quarto':'Acessórios',
+  'sofa':'Sofás e Estofados','sofas':'Sofás e Estofados','estofado':'Sofás e Estofados','estofados':'Sofás e Estofados','retratil':'Sofás e Estofados','sofas e estofados':'Sofás e Estofados',
+  'poltrona':'Poltronas','poltronas':'Poltronas',
+  'rack':'Racks e Painéis','painel':'Racks e Painéis','paineis':'Racks e Painéis','bancada':'Racks e Painéis','racks e paineis':'Racks e Painéis',
+  'home':'Home e Estantes','estante':'Home e Estantes','nicho':'Home e Estantes','prateleira':'Home e Estantes','home e estante':'Home e Estantes','home e estantes':'Home e Estantes',
+  'aparador':'Aparadores','aparadores':'Aparadores','aparadores e complementos':'Aparadores',
+  'mesa':'Mesas de Jantar','mesas':'Mesas de Jantar','mesa de jantar':'Mesas de Jantar','mesas de jantar':'Mesas de Jantar',
+  'cadeira':'Cadeiras','cadeiras':'Cadeiras',
+  'buffet':'Aparadores e Buffet','cristaleira':'Aparadores e Buffet','aparadores e buffet':'Aparadores e Buffet',
+  'armario aereo':'Armários e Balcões','balcao':'Armários e Balcões','balcoes':'Armários e Balcões','armarios e balcoes':'Armários e Balcões',
+  'cozinha completa':'Cozinha Completa','kit cozinha':'Cozinha Completa',
+  'paneleiro':'Paneleiros','paneleiros':'Paneleiros',
+  'colchao':'Colchões','colchoes':'Colchões','mola ensacada':'Colchões','molas ensacadas':'Colchões',
+  'cama box':'Camas Box','base colchao':'Camas Box','base+colchao':'Camas Box','camas box':'Camas Box','colchoes e camas box':'Camas Box',
+  'travesseiro':'Acessórios','almofada':'Acessórios','colchonete':'Acessórios','encosto':'Acessórios','encosto anatomico':'Acessórios',
+  'geladeira':'Geladeiras e Freezers','refrigerador':'Geladeiras e Freezers','freezer':'Geladeiras e Freezers','frigobar':'Geladeiras e Freezers','cervejeira':'Geladeiras e Freezers','adega':'Geladeiras e Freezers','geladeiras e freezers':'Geladeiras e Freezers','geladeiras':'Geladeiras e Freezers',
+  'fogao':'Fogões e Cooktops','cooktop':'Fogões e Cooktops','fogoes e cooktops':'Fogões e Cooktops','fogoes':'Fogões e Cooktops',
+  'lavadora':'Lavadoras','maquina de lavar':'Lavadoras','lava e seca':'Lavadoras','lavadoras':'Lavadoras',
+  'ar condicionado':'Ar-condicionado','ar-condicionado':'Ar-condicionado','climatizador':'Ar-condicionado',
+  'forno':'Fornos e Micro-ondas','micro-ondas':'Fornos e Micro-ondas','micro ondas':'Fornos e Micro-ondas','fornos':'Fornos e Micro-ondas','fornos e micro-ondas':'Fornos e Micro-ondas',
+  'tv':'TV e Vídeo','televisao':'TV e Vídeo','smart tv':'TV e Vídeo','tv e video':'TV e Vídeo',
+  'ventilador':'Ventiladores','ventiladores':'Ventiladores','purificador':'Ventiladores',
+  'depurador':'Depuradores e Coifas','coifa':'Depuradores e Coifas','depuradores':'Depuradores e Coifas',
+  'caixa de som':'Áudio','amplificadora':'Áudio','audio':'Áudio',
+  'escrivaninha':'Escrivaninhas e Mesas','mesa de computador':'Escrivaninhas e Mesas','mesa gamer':'Escrivaninhas e Mesas','escrivaninha e mesa gamer':'Escrivaninhas e Mesas','escrivaninhas':'Escrivaninhas e Mesas','escrivaninhas e mesas':'Escrivaninhas e Mesas',
+  'cadeira de escritorio':'Cadeiras de Escritório','cadeira gamer':'Cadeiras de Escritório','cadeiras de escritorio':'Cadeiras de Escritório',
+  'estantes':'Estantes',
+};
+function _toTitleCase(s){return(s||'').replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase());}
+function normalizePai(raw){if(!raw||raw==='Geral')return'Outros';return _PAI_MAP[_normKey(raw)]||'Outros';}
+function normalizeFilho(rawFilho,paiCanon){
+  if(!rawFilho||rawFilho==='Geral')return'';
+  const k=_normKey(rawFilho);
+  if(paiCanon==='Escritório'){
+    if(/escrivaninha|mesa.?(computador|gamer|escritorio)/.test(k))return'Escrivaninhas e Mesas';
+    if(/cadeira.?(escritorio|gamer)/.test(k))return'Cadeiras de Escritório';
+    if(k==='estante'||k==='estantes')return'Estantes';
+  }
+  return _FILHO_MAP[k]||_toTitleCase(rawFilho);
+}
+
 /* ══ CATEGORIA POR NOME ══ */
 function getCatPorNome(nome, url=''){
   const n=(nome||'').toLowerCase();
@@ -2679,13 +2742,15 @@ async function loadFromSupabase(){
         const dbPai=p.cat_pai||'';
         const dbFilho=p.cat_filho||'';
         const cat=(dbPai&&dbPai!=='Geral')
-          ?{pai:dbPai,filho:dbFilho||'Geral'}
+          ?{pai:dbPai,filho:dbFilho||''}
           :getCatPorNome(p.nome,p.url||p.referencia||'');
+        const paiNorm=normalizePai(cat.pai);
+        const filhoNorm=normalizeFilho(cat.filho,paiNorm);
         return {
           cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||'',
           preco:parseFloat(p.preco)||0,grupo:p.grupo||p.fornecedor||'',
-          catPai:cat.pai,catFilho:cat.filho,
-          categoria:cat.pai,descricao:p.descricao||'',
+          catPai:paiNorm,catFilho:filhoNorm,
+          categoria:paiNorm,descricao:p.descricao||'',
           fotos:p.fotos||'',dimensoes:p.dimensoes||'',status:p.status||'Ativo',
         };
       }).filter(p=>p.preco>0);
