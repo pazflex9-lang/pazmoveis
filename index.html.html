@@ -681,7 +681,7 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 
 /* ── FOOTER ── */
 footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;color:#333}
-.footer-inner{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:220px repeat(5,1fr);gap:22px;padding-bottom:22px}
+.footer-inner{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:220px repeat(4,1fr);gap:22px;padding-bottom:22px}
 .footer-logo-wrap{display:flex;flex-direction:column;gap:10px}
 .footer-logo-wrap img{max-height:44px;max-width:160px;object-fit:contain;display:none}
 .footer-logo-box{background:linear-gradient(135deg,var(--red),var(--red-dark));border-radius:10px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;align-self:flex-start}
@@ -2269,10 +2269,9 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
         </a>
       </div>
     </div>
-    <div class="footer-col"><h4>Departamentos</h4><div id="footerDeptLinks"><a href="/" onclick="filterCat(&#39;Quarto&#39;,null);return false">Quarto</a><a href="/" onclick="filterCat(&#39;Sala de Estar&#39;,null);return false">Sala de Estar</a><a href="/" onclick="filterCat(&#39;Cozinha&#39;,null);return false">Cozinha</a><a href="/" onclick="filterCat(&#39;Outros&#39;,null);return false">Outros</a><a href="/" onclick="filterCat(&#39;Eletrodomésticos&#39;,null);return false">Eletrodomésticos</a><a href="/" onclick="filterCat(&#39;Sala de Jantar&#39;,null);return false">Sala de Jantar</a><a href="/" onclick="filterCat(&#39;Cama e Colchão&#39;,null);return false">Cama e Colchão</a><a href="/" onclick="filterCat(&#39;Escritório&#39;,null);return false">Escritório</a></div></div>
-    <div class="footer-col"><h4>Institucional</h4><div id="footerInfoLinks"><a href="/">Sobre Nós</a><a href="/">Nossas Lojas</a><a href="/">Trabalhe Conosco</a><a href="/">Política de Privacidade</a><a href="/">Como comprar</a><a href="/politica-montagem.html">Política de Montagem de Móveis</a><a href="/politica-trocas.html">Política de Trocas e Devoluções</a><a href="/politica-frete.html">Política de Frete</a><a href="/politica-pagamento.html">Política de Pagamento</a><a href="/politica-entrega.html">Política de Entrega</a><a href="/">Fale Conosco</a></div></div>
+    <div class="footer-col"><h4>Institucional</h4><div id="footerInfoLinks"><a href="/">Sobre Nós</a><a href="/">Nossas Lojas</a><a href="/">Trabalhe Conosco</a><a href="/">Fale Conosco</a></div></div>
+    <div class="footer-col"><h4>Atendimento</h4><div id="footerAtendLinks"><a href="/">Como comprar</a><a href="/politica-montagem.html">Política de Montagem de Móveis</a><a href="/politica-trocas.html">Política de Trocas e Devoluções</a><a href="/">Política de Privacidade</a><a href="/politica-frete.html">Política de Frete</a><a href="/politica-pagamento.html">Política de Pagamento</a><a href="/politica-entrega.html">Política de Entrega</a></div></div>
     <div class="footer-col"><h4>Portal do Cliente</h4><div id="footerPortalLinks"><a href="/">Minha Conta</a><a href="/">Meus Pedidos</a><a href="/">Pegue aqui seu cupom</a></div></div>
-    <div class="footer-col"><h4>Serviços</h4><div id="footerServLinks"><a href="/">Pix Parcelado</a><a href="/">Frete Grátis</a><a href="/">Central de Troca</a></div></div>
     <div class="footer-col"><h4>Contato</h4><div id="footerContatoLinks"><a href="/">Central de Atendimento</a><a href="/">Perguntas Frequentes</a><a href="https://wa.me/5571992655081">💬 WhatsApp: (71) 99265-5081</a></div></div>
   </div>
   <div class="footer-payment">
@@ -3079,16 +3078,12 @@ function renderChampions(){
 
 /* ══ FOOTER DEPTS ══ */
 function renderFooterDepts(){
-  const cats=[...new Set(allProducts.map(p=>p.catPai).filter(Boolean))].filter(c=>!hiddenCats.has(c));
-  const el=document.getElementById('footerDeptLinks');
-  if(el)el.innerHTML=cats.map(c=>`<a href="#" onclick="filterCat('${c.replace(/'/g,"\\'")}',null);return false">${categoryNames[c]||c}</a>`).join('');
-  // Links fixos outros cols
   const info=document.getElementById('footerInfoLinks');
-  if(info)info.innerHTML=[{l:'Sobre Nós',u:'/'},{l:'Nossas Lojas',u:'/'},{l:'Trabalhe Conosco',u:'/'},{l:'Política de Privacidade',u:'/'},{l:'Como comprar',u:'/'},{l:'Política de Montagem de Móveis',u:'/politica-montagem.html'},{l:'Política de Trocas e Devoluções',u:'/politica-trocas.html'},{l:'Política de Frete',u:'/politica-frete.html'},{l:'Política de Pagamento',u:'/politica-pagamento.html'},{l:'Política de Entrega',u:'/politica-entrega.html'},{l:'Fale Conosco',u:'/'}].map(i=>`<a href="${i.u}">${i.l}</a>`).join('');
+  if(info)info.innerHTML=[{l:'Sobre Nós',u:'/'},{l:'Nossas Lojas',u:'/'},{l:'Trabalhe Conosco',u:'/'},{l:'Fale Conosco',u:'/'}].map(i=>`<a href="${i.u}">${i.l}</a>`).join('');
+  const atend=document.getElementById('footerAtendLinks');
+  if(atend)atend.innerHTML=[{l:'Como comprar',u:'/'},{l:'Política de Montagem de Móveis',u:'/politica-montagem.html'},{l:'Política de Trocas e Devoluções',u:'/politica-trocas.html'},{l:'Política de Privacidade',u:'/'},{l:'Política de Frete',u:'/politica-frete.html'},{l:'Política de Pagamento',u:'/politica-pagamento.html'},{l:'Política de Entrega',u:'/politica-entrega.html'}].map(i=>`<a href="${i.u}">${i.l}</a>`).join('');
   const portal=document.getElementById('footerPortalLinks');
   if(portal)portal.innerHTML=['Minha Conta','Meus Pedidos','Pegue aqui seu cupom'].map(l=>`<a href="#">${l}</a>`).join('');
-  const serv=document.getElementById('footerServLinks');
-  if(serv)serv.innerHTML=['Pix Parcelado','Frete Grátis','Central de Troca'].map(l=>`<a href="#">${l}</a>`).join('');
   const cont=document.getElementById('footerContatoLinks');
   if(cont)cont.innerHTML=[{l:'Central de Atendimento',u:'#'},{l:'Perguntas Frequentes',u:'#'},{l:'💬 WhatsApp: (71) 99265-5081',u:'https://wa.me/5571992655081'}].map(i=>`<a href="${i.u}">${i.l}</a>`).join('');
 }
