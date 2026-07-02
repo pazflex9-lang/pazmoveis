@@ -1033,6 +1033,79 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
     <p>Para pedidos com valor abaixo de R$ 499,99, é cobrada uma taxa fixa de R$ 50,00. As áreas atendidas são os municípios de Salvador e Lauro de Freitas (BA).</p>
   </div>
 </main>
+<!-- LOGIN MODAL -->
+<div class="login-modal" id="loginModal">
+  <div class="login-box">
+    <h2>Bem-vindo!</h2>
+    <p>Entre ou crie sua conta para uma experiência personalizada</p>
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabEntrar" onclick="switchLoginTab('entrar')">Entrar</button>
+      <button class="login-tab" id="tabCadastro" onclick="switchLoginTab('cadastro')">Criar conta</button>
+    </div>
+    <div id="formEntrar">
+      <div class="form-group"><label>E-mail</label><input type="email" id="loginEmail" placeholder="seu@email.com"></div>
+      <div class="form-group"><label>Senha</label><input type="password" id="loginSenha" placeholder="••••••••"></div>
+      <button class="btn-login-action" onclick="loginUser()">Entrar</button>
+      <button class="btn-login-cancel" onclick="closeLoginModal()">Cancelar</button>
+    </div>
+    <div id="formCadastro" style="display:none">
+      <div class="form-group"><label>Nome</label><input type="text" id="cadNome" placeholder="Seu nome completo"></div>
+      <div class="form-group"><label>WhatsApp / Telefone *</label><input type="tel" id="cadTel" placeholder="(71) 99999-9999" maxlength="15" oninput="maskPhone(this)"></div>
+      <div class="form-group"><label>E-mail</label><input type="email" id="cadEmail" placeholder="seu@email.com"></div>
+      <div class="form-group"><label>Senha</label><input type="password" id="cadSenha" placeholder="••••••••"></div>
+      <button class="btn-login-action" onclick="createAccount()">Criar conta</button>
+      <button class="btn-login-cancel" onclick="closeLoginModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PERFIL -->
+<div class="perfil-page" id="perfilPage">
+  <div class="perfil-header" style="flex-direction:column;align-items:stretch;padding-bottom:0">
+    <div style="display:flex;align-items:center;gap:14px;padding-bottom:10px">
+      <button class="pp-back" onclick="closePerfil()">&#8592;</button>
+      <h2>Meu Perfil</h2>
+    </div>
+    <div class="perfil-tabs">
+      <button class="perfil-tab active" id="tabPerfilDados" onclick="switchPerfilTab('dados')">Perfil</button>
+      <button class="perfil-tab" id="tabPerfilPedidos" onclick="switchPerfilTab('pedidos')">Meus Pedidos</button>
+    </div>
+  </div>
+  <div class="perfil-body" id="perfilDadosBody">
+    <div class="perfil-avatar-wrap">
+      <input type="file" id="perfilFotoInput" accept="image/*" style="display:none" onchange="perfilFotoChange(event)">
+      <div id="perfilAvatarWrap" onclick="document.getElementById('perfilFotoInput').click()">
+        <img id="perfilAvatarImg" class="perfil-avatar" style="display:none" alt="Foto">
+        <div id="perfilAvatarPlaceholder" class="perfil-avatar-placeholder">👤</div>
+      </div>
+      <span class="perfil-avatar-hint">Clique para alterar a foto</span>
+    </div>
+    <div class="perfil-card">
+      <h3>Dados pessoais</h3>
+      <div class="perfil-grid">
+        <div class="form-group full"><label>Nome completo</label><input type="text" id="pfNome" placeholder="Seu nome completo"></div>
+        <div class="form-group"><label>E-mail</label><input type="email" id="pfEmail" placeholder="seu@email.com"></div>
+        <div class="form-group"><label>Telefone</label><input type="tel" id="pfTel" placeholder="(00) 00000-0000"></div>
+        <div class="form-group"><label>CPF</label><input type="text" id="pfCpf" placeholder="000.000.000-00" maxlength="14"></div>
+      </div>
+    </div>
+    <div class="perfil-card">
+      <h3>Endereço</h3>
+      <div class="perfil-grid">
+        <div class="form-group full"><label>Endereço</label><input type="text" id="pfEndereco" placeholder="Rua, número, complemento"></div>
+        <div class="form-group"><label>Cidade</label><input type="text" id="pfCidade" placeholder="Sua cidade"></div>
+        <div class="form-group"><label>CEP</label><input type="text" id="pfCep" placeholder="00000-000" maxlength="9"></div>
+      </div>
+    </div>
+    <button class="btn-salvar-perfil" onclick="savePerfil()">Salvar alterações</button>
+  </div>
+  <div class="perfil-body" id="perfilPedidosBody" style="display:none">
+    <div id="pedidosList"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ Adicionado!</div>
 
 <footer id="siteFooter">
   <div class="footer-inner">
@@ -1058,8 +1131,8 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
     </div>
     <div class="footer-col"><h4>Institucional</h4><div id="footerInfoLinks"><a href="/quem-somos.html">Sobre Nós</a><a href="/fale-conosco.html">Fale Conosco</a></div></div>
     <div class="footer-col"><h4>Atendimento</h4><div id="footerAtendLinks"><a href="/como-comprar.html">Como comprar</a><a href="/politica-montagem.html">Política de Montagem de Móveis</a><a href="/politica-trocas.html">Política de Trocas e Devoluções</a><a href="/politica-privacidade.html">Política de Privacidade</a><a href="/politica-frete.html">Política de Frete</a><a href="/politica-pagamento.html">Política de Pagamento</a><a href="/politica-entrega.html">Política de Entrega</a></div></div>
-    <div class="footer-col"><h4>Portal do Cliente</h4><div id="footerPortalLinks"><a href="/">Minha Conta</a><a href="/">Meus Pedidos</a><a href="/">Pegue aqui seu cupom</a></div></div>
-    <div class="footer-col"><h4>Contato</h4><div id="footerContatoLinks"><a href="/">Central de Atendimento</a><a href="/">Perguntas Frequentes</a><a href="https://wa.me/5571992655081">💬 WhatsApp: (71) 99265-5081</a></div></div>
+    <div class="footer-col"><h4>Portal do Cliente</h4><div id="footerPortalLinks"><a href="#" onclick="openPerfil();return false">Minha Conta</a><a href="#" onclick="openPerfil();switchPerfilTab('pedidos');return false">Meus Pedidos</a></div></div>
+    <div class="footer-col"><h4>Contato</h4><div id="footerContatoLinks"><a href="https://wa.me/5571992655081" target="_blank">Central de Atendimento</a><a href="/">Perguntas Frequentes</a><a href="https://wa.me/5571992655081">💬 WhatsApp: (71) 99265-5081</a></div></div>
   </div>
   </div>
   <div class="footer-payment">
@@ -1074,6 +1147,248 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
   </div>
   <div class="footer-bottom" id="footerBottom">Paz Móveis — sua loja de confiança em Salvador/BA.</div>
 </footer>
+<script>
+/* ══ SUPABASE (sessão de usuário) ══ */
+const SUPA_URL='https://dhsjxyuecrjsoneevxkx.supabase.co';
+const SUPA_KEY='sb_publishable_jb7bGFEqMpwp2_9WEysEkA_IfVrw9lS';
+const SH={'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Content-Type':'application/json'};
+const supa={
+  async get(t,p=''){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${p}`,{headers:{...SH,'Range':'0-9999','Prefer':'count=none'}});return r.ok?r.json():[]},
+  async getConfig(){const rows=await this.get('configuracoes','select=chave,valor');const cfg={};rows.forEach(r=>cfg[r.chave]=r.valor);return cfg},
+  async upsert(t,data,conflict='id'){try{const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:'POST',headers:{...SH,'Prefer':`resolution=merge-duplicates,return=representation`,'on_conflict':conflict},body:JSON.stringify(Array.isArray(data)?data:[data])});return r.ok?r.json():null;}catch(e){console.error('supa.upsert:',e);return null;}},
+  async del(t,f){try{await fetch(`${SUPA_URL}/rest/v1/${t}?${f}`,{method:'DELETE',headers:SH});return true;}catch(e){return false;}},
+};
+
+let cart=[],allProducts=[];
+function formatPrice(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+
+/* ══ LOGIN ══ */
+function openLoginModal(){document.getElementById('loginModal').classList.add('show');}
+function closeLoginModal(){document.getElementById('loginModal').classList.remove('show');}
+function switchLoginTab(tab){
+  document.getElementById('formEntrar').style.display=tab==='entrar'?'':'none';
+  document.getElementById('formCadastro').style.display=tab==='cadastro'?'':'none';
+  document.getElementById('tabEntrar').classList.toggle('active',tab==='entrar');
+  document.getElementById('tabCadastro').classList.toggle('active',tab==='cadastro');
+}
+async function loginUser(){
+  const email=document.getElementById('loginEmail').value.trim(),senha=document.getElementById('loginSenha').value;
+  if(!email||!senha){showToast('⚠️ Preencha e-mail e senha!');return;}
+  // Tenta localStorage primeiro
+  const users=JSON.parse(localStorage.getItem('paz_users')||'[]');
+  let u=users.find(x=>x.email===email&&x.senha===senha);
+  if(!u){
+    // Tenta Supabase
+    try{
+      const rows=await supa.get('usuarios',`email=eq.${encodeURIComponent(email)}&senha_hash=eq.${encodeURIComponent(senha)}&select=nome,email,telefone`);
+      if(rows&&rows.length){
+        const r=rows[0];
+        u={nome:r.nome,email:r.email,tel:r.telefone,senha};
+        // Sincroniza localStorage
+        const ls=JSON.parse(localStorage.getItem('paz_users')||'[]');
+        if(!ls.find(x=>x.email===email)){ls.push(u);localStorage.setItem('paz_users',JSON.stringify(ls));}
+        localStorage.setItem('paz_user',JSON.stringify(u));
+      }
+    }catch(e){}
+  }
+  if(!u){showToast('⚠️ E-mail ou senha incorretos!');return;}
+  localStorage.setItem('paz_user',JSON.stringify(u));
+  setLoggedIn(u);
+  closeLoginModal();showToast('✅ Bem-vindo, '+u.nome.split(' ')[0]+'!','success');
+}
+function maskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);if(v.length<=2)v='('+v;else if(v.length<=6)v='('+v.slice(0,2)+') '+v.slice(2);else if(v.length<=10)v='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);else v='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);el.value=v;}
+async function createAccount(){
+  const nome=document.getElementById('cadNome').value.trim();
+  const tel=document.getElementById('cadTel').value.trim();
+  const email=document.getElementById('cadEmail').value.trim();
+  const senha=document.getElementById('cadSenha').value;
+  if(!nome||!tel||!email||!senha){showToast('⚠️ Preencha todos os campos!');return;}
+  if(tel.replace(/\D/g,'').length<10){showToast('⚠️ Telefone inválido!');return;}
+  const users=JSON.parse(localStorage.getItem('paz_users')||'[]');
+  if(users.find(x=>x.email===email)){showToast('⚠️ E-mail já cadastrado!');return;}
+  const u={nome,tel,email,senha};
+  users.push(u);
+  localStorage.setItem('paz_users',JSON.stringify(users));
+  localStorage.setItem('paz_user',JSON.stringify(u));
+  // Salva no Supabase (tabela usuarios)
+  supa.upsert('usuarios',{nome,email,telefone:tel,senha_hash:senha},'email').catch(()=>{});
+  setLoggedIn(u);
+  closeLoginModal();showToast('✅ Conta criada! Bem-vindo, '+nome.split(' ')[0]+'!','success');
+}
+
+/* ══ USER DROPDOWN ══ */
+function setLoggedIn(u){
+  const lbl=document.getElementById('loginBtnLabel');
+  if(lbl)lbl.textContent=u.nome.split(' ')[0];
+}
+function handleUserBtn(){
+  const u=JSON.parse(localStorage.getItem('paz_user')||'null');
+  if(!u){openLoginModal();}
+  else{document.getElementById('userDropdownMenu').classList.toggle('show');}
+}
+function closeUserDropdown(){
+  const m=document.getElementById('userDropdownMenu');
+  if(m)m.classList.remove('show');
+}
+function logoutUser(){
+  localStorage.removeItem('paz_user');
+  const lbl=document.getElementById('loginBtnLabel');
+  if(lbl)lbl.textContent='Entrar';
+  closeUserDropdown();
+  showToast('Até logo!');
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#userDropdown'))closeUserDropdown();});
+
+/* ══ PERFIL ══ */
+function openPerfil(){
+  const u=JSON.parse(localStorage.getItem('paz_user')||'null');
+  if(!u){openLoginModal();return;}
+  const prof=JSON.parse(localStorage.getItem('paz_perfil')||'{}');
+  document.getElementById('pfNome').value=prof.nome||u.nome||'';
+  document.getElementById('pfEmail').value=prof.email||u.email||'';
+  document.getElementById('pfTel').value=prof.tel||'';
+  document.getElementById('pfCpf').value=prof.cpf||'';
+  document.getElementById('pfEndereco').value=prof.endereco||'';
+  document.getElementById('pfCidade').value=prof.cidade||'';
+  document.getElementById('pfCep').value=prof.cep||'';
+  const foto=prof.foto||null;
+  const img=document.getElementById('perfilAvatarImg');
+  const ph=document.getElementById('perfilAvatarPlaceholder');
+  if(foto){img.src=foto;img.style.display='';ph.style.display='none';}
+  else{img.style.display='none';ph.style.display='';}
+  switchPerfilTab('dados');
+  document.getElementById('perfilPage').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closePerfil(){
+  document.getElementById('perfilPage').classList.remove('show');
+  document.body.style.overflow='';
+}
+function savePerfil(){
+  const prof={
+    nome:document.getElementById('pfNome').value.trim(),
+    email:document.getElementById('pfEmail').value.trim(),
+    tel:document.getElementById('pfTel').value.trim(),
+    cpf:document.getElementById('pfCpf').value.trim(),
+    endereco:document.getElementById('pfEndereco').value.trim(),
+    cidade:document.getElementById('pfCidade').value.trim(),
+    cep:document.getElementById('pfCep').value.trim(),
+    foto:document.getElementById('perfilAvatarImg').src||null,
+  };
+  if(!prof.foto||prof.foto===window.location.href)prof.foto=null;
+  localStorage.setItem('paz_perfil',JSON.stringify(prof));
+  if(prof.nome){
+    const u=JSON.parse(localStorage.getItem('paz_user')||'{}');
+    u.nome=prof.nome;
+    localStorage.setItem('paz_user',JSON.stringify(u));
+    setLoggedIn(u);
+  }
+  showToast('✅ Perfil salvo!','success');
+}
+function perfilFotoChange(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=document.getElementById('perfilAvatarImg');
+    const ph=document.getElementById('perfilAvatarPlaceholder');
+    img.src=ev.target.result;img.style.display='';ph.style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+
+/* ══ TOAST ══ */
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast show ${type}`;setTimeout(()=>t.classList.remove('show'),3000);}
+
+/* ══ MEUS PEDIDOS ══ */
+function switchPerfilTab(tab){
+  const dB=document.getElementById('perfilDadosBody'),pB=document.getElementById('perfilPedidosBody');
+  const tD=document.getElementById('tabPerfilDados'),tP=document.getElementById('tabPerfilPedidos');
+  if(dB)dB.style.display=tab==='dados'?'':'none';
+  if(pB)pB.style.display=tab==='pedidos'?'':'none';
+  if(tD)tD.classList.toggle('active',tab==='dados');
+  if(tP)tP.classList.toggle('active',tab==='pedidos');
+  if(tab==='pedidos')renderMeusPedidos();
+}
+async function renderMeusPedidos(){
+  const list=document.getElementById('pedidosList');if(!list)return;
+  list.innerHTML='<div class="pedidos-empty"><span>⏳</span><p>Carregando pedidos...</p></div>';
+  const _u=JSON.parse(localStorage.getItem('paz_user')||'null');
+  const _email=_u&&_u.email;
+  let pedidos=[];
+
+  if(_email){
+    // Busca do Supabase
+    try{
+      const rows=await supa.get('pedidos',`usuario_email=eq.${encodeURIComponent(_email)}&order=created_at.desc&select=*`);
+      if(rows&&rows.length) pedidos=rows.map(p=>({
+        id:p.id,
+        data:p.created_at,
+        nome:p.cliente_nome||'',
+        total:p.total||0,
+        status:p.status||'Pendente',
+        items:(p.itens||[])
+      }));
+    }catch(e){}
+  }
+  // Fallback: localStorage
+  if(!pedidos.length){
+    pedidos=JSON.parse(localStorage.getItem('paz_pedidos')||'[]');
+  }
+
+  if(!pedidos.length){
+    list.innerHTML='<div class="pedidos-empty"><span>📦</span><p>Nenhum pedido ainda</p><p style="font-size:12px;color:var(--gray-400);margin-top:2px">Seus pedidos aparecerão aqui</p></div>';
+    return;
+  }
+
+  const STATUS_ICON={Pendente:'⏳',Confirmado:'✅',Enviado:'🚚',Concluído:'🎉',Cancelado:'❌'};
+  list.innerHTML=pedidos.map((p,idx)=>{
+    const d=new Date(p.data||p.created_at);
+    const df=d.toLocaleDateString('pt-BR')+' às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const st=p.status||'Pendente';
+    const stKey=st.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const icon=STATUS_ICON[st]||'📦';
+    const itens=p.items||p.itens||[];
+    const itH=itens.map(it=>`<div class="pedido-item-row">
+      ${it.foto?`<img class="pedido-item-img" src="${it.foto}" onerror="this.style.display='none'" alt="">`:
+        '<div class="pedido-item-img" style="display:flex;align-items:center;justify-content:center;font-size:18px">🛋️</div>'}
+      <div class="pedido-item-info"><div class="pedido-item-name">${it.nome}</div><div class="pedido-item-qty">${it.qty}x — ${formatPrice(it.preco)}</div></div>
+      <div class="pedido-item-price">${formatPrice(it.preco*it.qty)}</div>
+    </div>`).join('');
+    const pidShort=(p.id||'').toString().slice(-8).toUpperCase();
+    return `<div class="pedido-card">
+      <div class="pedido-header">
+        <div><div class="pedido-num">#${pidShort}</div><div class="pedido-data">${df}</div></div>
+        <div class="pedido-status ${stKey}">${icon} ${st}</div>
+      </div>
+      <div class="pedido-items">${itH||'<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Itens não disponíveis</div>'}</div>
+      <div class="pedido-footer">
+        <div class="pedido-total">Total: ${formatPrice(parseFloat(p.total)||0)}</div>
+        ${typeof repetirPedido==='function'?`<button class="btn-repetir" onclick="repetirPedido(${idx})">🔁 Repetir</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function repetirPedido(idx){
+  const pedidos=JSON.parse(localStorage.getItem('paz_pedidos')||'[]');
+  const p=pedidos[idx];if(!p)return;
+  p.items.forEach(it=>{
+    const prod=allProducts.find(x=>x.cod===it.cod);if(!prod)return;
+    const ex=cart.find(c=>c.cod===it.cod);
+    if(ex)ex.qty+=it.qty;else cart.push({...prod,qty:it.qty});
+  });
+  renderCart();closePerfil();
+  document.getElementById('cartDrawer').classList.add('open');
+  document.getElementById('cartOverlay').classList.add('show');
+  showToast('🛒 Itens adicionados ao carrinho!','success');
+}
+
+/* ══ INIT SESSÃO ══ */
+(function(){
+  const u=JSON.parse(localStorage.getItem('paz_user')||'null');
+  if(u)setLoggedIn(u);
+})();
+</script>
 
 </body>
 </html>
