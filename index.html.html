@@ -2270,7 +2270,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
       </div>
     </div>
     <div class="footer-col"><h4>Departamentos</h4><div id="footerDeptLinks"><a href="/" onclick="filterCat(&#39;Quarto&#39;,null);return false">Quarto</a><a href="/" onclick="filterCat(&#39;Sala de Estar&#39;,null);return false">Sala de Estar</a><a href="/" onclick="filterCat(&#39;Cozinha&#39;,null);return false">Cozinha</a><a href="/" onclick="filterCat(&#39;Outros&#39;,null);return false">Outros</a><a href="/" onclick="filterCat(&#39;Eletrodomésticos&#39;,null);return false">Eletrodomésticos</a><a href="/" onclick="filterCat(&#39;Sala de Jantar&#39;,null);return false">Sala de Jantar</a><a href="/" onclick="filterCat(&#39;Cama e Colchão&#39;,null);return false">Cama e Colchão</a><a href="/" onclick="filterCat(&#39;Escritório&#39;,null);return false">Escritório</a></div></div>
-    <div class="footer-col"><h4>Institucional</h4><div id="footerInfoLinks"><a href="/">Sobre Nós</a><a href="/">Nossas Lojas</a><a href="/">Trabalhe Conosco</a><a href="/">Política de Privacidade</a></div></div>
+    <div class="footer-col"><h4>Institucional</h4><div id="footerInfoLinks"><a href="/">Sobre Nós</a><a href="/">Nossas Lojas</a><a href="/">Trabalhe Conosco</a><a href="/">Política de Privacidade</a><a href="/">Como comprar</a><a href="/">Política de Montagem de Móveis</a><a href="/">Política de Trocas e Devoluções</a><a href="/">Política de Frete</a><a href="/">Política de Pagamento</a><a href="/">Política de Entrega</a><a href="/">Fale Conosco</a></div></div>
     <div class="footer-col"><h4>Portal do Cliente</h4><div id="footerPortalLinks"><a href="/">Minha Conta</a><a href="/">Meus Pedidos</a><a href="/">Pegue aqui seu cupom</a></div></div>
     <div class="footer-col"><h4>Serviços</h4><div id="footerServLinks"><a href="/">Pix Parcelado</a><a href="/">Frete Grátis</a><a href="/">Central de Troca</a></div></div>
     <div class="footer-col"><h4>Contato</h4><div id="footerContatoLinks"><a href="/">Central de Atendimento</a><a href="/">Perguntas Frequentes</a><a href="https://wa.me/5571992655081">💬 WhatsApp: (71) 99265-5081</a></div></div>
@@ -3084,7 +3084,7 @@ function renderFooterDepts(){
   if(el)el.innerHTML=cats.map(c=>`<a href="#" onclick="filterCat('${c.replace(/'/g,"\\'")}',null);return false">${categoryNames[c]||c}</a>`).join('');
   // Links fixos outros cols
   const info=document.getElementById('footerInfoLinks');
-  if(info)info.innerHTML=['Sobre Nós','Nossas Lojas','Trabalhe Conosco','Política de Privacidade'].map(l=>`<a href="#">${l}</a>`).join('');
+  if(info)info.innerHTML=['Sobre Nós','Nossas Lojas','Trabalhe Conosco','Política de Privacidade','Como comprar','Política de Montagem de Móveis','Política de Trocas e Devoluções','Política de Frete','Política de Pagamento','Política de Entrega','Fale Conosco'].map(l=>`<a href="/">${l}</a>`).join('');
   const portal=document.getElementById('footerPortalLinks');
   if(portal)portal.innerHTML=['Minha Conta','Meus Pedidos','Pegue aqui seu cupom'].map(l=>`<a href="#">${l}</a>`).join('');
   const serv=document.getElementById('footerServLinks');
