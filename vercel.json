@@ -5,5 +5,8 @@
   ],
   "redirects": [
     { "source": "/index.html", "destination": "/", "permanent": false }
+  ],
+  "headers": [
+    { "source": "/123.jpg", "headers": [{ "key": "Content-Type", "value": "image/png" }] }
   ]
 }
