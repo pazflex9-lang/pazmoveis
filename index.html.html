@@ -931,7 +931,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
           <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
           Todos os Departamentos
         </button>
-        <div class="nav-todos-menu" id="navTodosMenu"><div class="nav-dd-item" onclick="filterCat(&#39;Quarto&#39;,null);closeTodosMenu()">Quarto</div><div class="nav-dd-item" onclick="filterCat(&#39;Sala de Estar&#39;,null);closeTodosMenu()">Sala de Estar</div><div class="nav-dd-item" onclick="filterCat(&#39;Cozinha&#39;,null);closeTodosMenu()">Cozinha</div><div class="nav-dd-item" onclick="filterCat(&#39;Outros&#39;,null);closeTodosMenu()">Outros</div><div class="nav-dd-item" onclick="filterCat(&#39;Eletrodomésticos&#39;,null);closeTodosMenu()">Eletrodomésticos</div><div class="nav-dd-item" onclick="filterCat(&#39;Sala de Jantar&#39;,null);closeTodosMenu()">Sala de Jantar</div><div class="nav-dd-item" onclick="filterCat(&#39;Cama e Colchão&#39;,null);closeTodosMenu()">Cama e Colchão</div><div class="nav-dd-item" onclick="filterCat(&#39;Escritório&#39;,null);closeTodosMenu()">Escritório</div></div>
+        <div class="nav-todos-menu" id="navTodosMenu"><div class="nav-dd-item" onclick="filterCat(&#39;Quarto&#39;,null);closeTodosMenu()">Quarto</div><div class="nav-dd-item" onclick="filterCat(&#39;Sala de Estar&#39;,null);closeTodosMenu()">Sala de Estar</div><div class="nav-dd-item" onclick="filterCat(&#39;Cozinha&#39;,null);closeTodosMenu()">Cozinha</div><div class="nav-dd-item" onclick="filterCat(&#39;Outros&#39;,null);closeTodosMenu()">Estofados</div><div class="nav-dd-item" onclick="filterCat(&#39;Eletrodomésticos&#39;,null);closeTodosMenu()">Eletrodomésticos</div><div class="nav-dd-item" onclick="filterCat(&#39;Sala de Jantar&#39;,null);closeTodosMenu()">Sala de Jantar</div><div class="nav-dd-item" onclick="filterCat(&#39;Cama e Colchão&#39;,null);closeTodosMenu()">Cama e Colchão</div><div class="nav-dd-item" onclick="filterCat(&#39;Escritório&#39;,null);closeTodosMenu()">Escritório</div></div>
       </div>
       <div class="nav-divider"></div>
       <div id="navCats" style="display:flex;align-items:stretch;overflow:visible;flex-shrink:0"><div class="nav-link-wrap">
@@ -957,7 +957,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
       </div>
     </div><div class="nav-link-wrap">
       <div class="nav-link" onclick="navCatClick(&#39;Outros&#39;,&#39;nav_Outros&#39;,this)">
-        Outros
+        Estofados
       </div>
       
     </div><div class="nav-link-wrap">
@@ -1051,7 +1051,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
       <span class="bubble-label">Cozinha</span>
     </div><div class="bubble" onclick="filterByCat(&#39;Outros&#39;,event)">
       <div class="bubble-img"><img src="./index.html_files/141a9f30422b.webp" alt="Outros" onerror="this.style.display=&#39;none&#39;;this.parentElement.innerHTML=&#39;&lt;div style=\&#39;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f0f0f0;\&#39;&gt;🛋️&lt;/div&gt;&#39;"></div>
-      <span class="bubble-label">Outros</span>
+      <span class="bubble-label">Estofados</span>
     </div><div class="bubble" onclick="filterByCat(&#39;Eletrodomésticos&#39;,event)">
       <div class="bubble-img"><img src="./index.html_files/37d0d0469eb3.webp" alt="Eletrodomésticos" onerror="this.style.display=&#39;none&#39;;this.parentElement.innerHTML=&#39;&lt;div style=\&#39;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f0f0f0;\&#39;&gt;🛋️&lt;/div&gt;&#39;"></div>
       <span class="bubble-label">Eletrodomésticos</span>
@@ -2554,7 +2554,7 @@ const supa={
 /* ══ ESTADO ══ */
 let allProducts=[],filteredProds=[],currentCat='',currentSubCat='',currentPage=1;
 const PER_PAGE=24;
-let WHATSAPP='5571999999999',cart=[],favorites=JSON.parse(localStorage.getItem('paz_favs')||'[]'),hiddenCats=new Set(),categoryNames={},banners=[];
+let WHATSAPP='5571999999999',cart=[],favorites=JSON.parse(localStorage.getItem('paz_favs')||'[]'),hiddenCats=new Set(),categoryNames={'Outros':'Estofados'},banners=[];
 let currentAmbienteCat='';
 
 /* ══ NORMALIZAÇÃO DE CATEGORIAS ══ */
