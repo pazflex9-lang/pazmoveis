@@ -2774,8 +2774,22 @@ async function confirmAddBolha() {
   showToast('✅ Bolha criada!', 'success');
 }
 
+// Cruza a árvore bruta (allProducts + categoriasRegistry) com a estrutura canônica do site: só entram
+// categorias-pai que são exatamente uma das 8 canônicas, e subcategorias que são exatamente um dos
+// valores do _FILHO_MAP (o mesmo mapa de normalização do index.html.html). Variações brutas ("Sala DE
+// Estar", "Sofá" solto, etc.) somem da lista — quem quiser limpá-las edita o produto (dropdown já normaliza).
+function filtrarHierarquiaCanonica(hierarquiaBruta) {
+  const filhosValidos = new Set(Object.values(_FILHO_MAP));
+  const h = {};
+  CATEGORIAS_PRINCIPAIS.forEach(pai => {
+    if (!hierarquiaBruta[pai]) return;
+    h[pai] = new Set([...hierarquiaBruta[pai]].filter(f => filhosValidos.has(f)));
+  });
+  return h;
+}
+
 function renderCatTree() {
-  const hierarquia = buildCategoriaHierarchy();
+  const hierarquia = filtrarHierarquiaCanonica(buildCategoriaHierarchy());
   const tree = document.getElementById('catTree');
   if(!Object.keys(hierarquia).length){ tree.innerHTML='<p style="color:var(--gray-400);text-align:center;padding:20px">Carregue o CSV primeiro.</p>'; return; }
   tree.innerHTML = Object.entries(hierarquia).map(([pai,filhos])=>{
