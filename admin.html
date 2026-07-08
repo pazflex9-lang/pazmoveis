@@ -2715,16 +2715,27 @@ function toggleCat(pai, visible) { if(visible) hiddenCats.delete(pai); else hidd
 
 async function deleteCatFilho(pai, filho) {
   const n = countProdutosCatFilho(pai, filho);
-  if (n > 0) { showToast(`⚠️ ${n} produto(s) usam "${filho}". Mova-os para outra subcategoria antes de excluir.`, 'error'); return; }
-  if (!confirm(`Excluir a subcategoria "${filho}" permanentemente?`)) return;
+  const msg = n > 0
+    ? `Esta subcategoria tem ${n} produto(s) vinculado(s). Ao excluir, esses produtos ficarão sem subcategoria. Deseja continuar?`
+    : 'Tem certeza que deseja excluir esta subcategoria?';
+  if (!confirm(msg)) return;
   showLoading('Excluindo subcategoria...');
+  if (n > 0) {
+    const okProdutos = await db.update('produtos',
+      { cat_filho: '', updated_at: new Date().toISOString() },
+      'cat_pai=eq.' + encodeURIComponent(pai) + '&cat_filho=eq.' + encodeURIComponent(filho)
+    );
+    if (!okProdutos) { hideLoading(); showToast('❌ Erro ao atualizar os produtos vinculados. Verifique o console.', 'error'); return; }
+    allProducts.forEach(p => { if (p.catPai === pai && p.catFilho === filho) p.catFilho = ''; });
+    filterProds();
+  }
   const ok = await db.delete('categorias', 'nome_original=eq.' + encodeURIComponent(filho));
   hideLoading();
   if (!ok) { showToast('❌ Erro ao excluir. Verifique o console.', 'error'); return; }
   categoriasRegistry = categoriasRegistry.filter(c => c.nome_original !== filho);
   delete categoryNames[filho];
   renderCatTree();
-  showToast('🗑️ Subcategoria excluída!', 'success');
+  showToast(n > 0 ? `🗑️ Subcategoria excluída! ${n} produto(s) ficaram sem subcategoria.` : '🗑️ Subcategoria excluída!', 'success');
 }
 
 async function deleteCatPai(pai) {
