@@ -1046,8 +1046,24 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
 
       <!-- Categoria -->
       <div class="field-row">
-        <div class="field"><label>Categoria Principal</label><input type="text" id="editCatPai" placeholder="ex: Quarto"></div>
-        <div class="field"><label>Subcategoria</label><input type="text" id="editCatFilho" placeholder="ex: Guarda-Roupas"></div>
+        <div class="field"><label>Categoria Principal</label>
+          <select id="editCatPai" onchange="onEditCatPaiChange()">
+            <option value="">Selecione...</option>
+            <option value="Eletrodomésticos">Eletrodomésticos</option>
+            <option value="Quarto">Quarto</option>
+            <option value="Sala de Jantar">Sala de Jantar</option>
+            <option value="Cozinha">Cozinha</option>
+            <option value="Sala de Estar">Sala de Estar</option>
+            <option value="Outros">Estofados</option>
+            <option value="Cama e Colchão">Cama e Colchão</option>
+            <option value="Escritório">Escritório</option>
+          </select>
+        </div>
+        <div class="field"><label>Subcategoria</label>
+          <select id="editCatFilho">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
       </div>
 
       <!-- Preço e status -->
@@ -1743,6 +1759,39 @@ async function reativarTodosPremoli() {
   filterProds();
 }
 
+// Seleciona o valor no #editCatPai, injetando uma opção extra se o produto tiver uma categoria fora da lista fixa
+// (evita que o select fique "sem seleção" e sobrescreva silenciosamente a categoria ao salvar)
+function setCatPaiSelect(pai) {
+  const sel = document.getElementById('editCatPai');
+  const antiga = sel.querySelector('option[data-atual]');
+  if (antiga) antiga.remove();
+  if (pai && !CATEGORIAS_PRINCIPAIS.includes(pai)) {
+    const opt = document.createElement('option');
+    opt.value = pai; opt.textContent = pai + ' (atual)'; opt.dataset.atual = '1';
+    sel.appendChild(opt);
+  }
+  sel.value = pai;
+}
+
+// Popula #editCatFilho com as subcategorias já existentes para `pai` (produtos + categorias cadastradas no admin),
+// preservando `selectedFilho` como opção extra se ele não estiver nessa lista
+function populateCatFilhoOptions(pai, selectedFilho) {
+  const sel = document.getElementById('editCatFilho');
+  const hierarquia = buildCategoriaHierarchy();
+  const filhos = (pai && hierarquia[pai]) ? [...hierarquia[pai]].sort() : [];
+  let html = '<option value="">Selecione...</option>';
+  filhos.forEach(f => { html += `<option value="${f}">${f}</option>`; });
+  if (selectedFilho && !filhos.includes(selectedFilho)) {
+    html += `<option value="${selectedFilho}">${selectedFilho} (atual)</option>`;
+  }
+  sel.innerHTML = html;
+  sel.value = selectedFilho || '';
+}
+
+function onEditCatPaiChange() {
+  populateCatFilhoOptions(document.getElementById('editCatPai').value, '');
+}
+
 function editProd(idx) {
   const p = filteredProducts[idx];
   if(!p) return;
@@ -1750,8 +1799,8 @@ function editProd(idx) {
   document.getElementById('editNome').value = p.nome || '';
   document.getElementById('editRef').value = p.ref || '';
   document.getElementById('editGrupo').value = p.grupo || '';
-  document.getElementById('editCatPai').value = p.catPai || '';
-  document.getElementById('editCatFilho').value = p.catFilho || '';
+  setCatPaiSelect(p.catPai || '');
+  populateCatFilhoOptions(p.catPai || '', p.catFilho || '');
   document.getElementById('editPreco').value = p.preco || 0;
   document.getElementById('editStatus').value = p.status || 'Ativo';
   document.getElementById('editDesc').value = p.descricao || '';
@@ -1769,8 +1818,8 @@ function newProd() {
   document.getElementById('editNome').value = '';
   document.getElementById('editRef').value = '';
   document.getElementById('editGrupo').value = '';
-  document.getElementById('editCatPai').value = '';
-  document.getElementById('editCatFilho').value = '';
+  setCatPaiSelect('');
+  populateCatFilhoOptions('', '');
   document.getElementById('editPreco').value = '';
   document.getElementById('editStatus').value = 'Ativo';
   document.getElementById('editDesc').value = '';
@@ -1835,6 +1884,7 @@ async function saveProd() {
   const grupo    = document.getElementById('editGrupo').value.trim();
   const catPai   = document.getElementById('editCatPai').value.trim();
   const catFilho = document.getElementById('editCatFilho').value.trim();
+  if (!catPai) { showToast('⚠️ Selecione a categoria principal.', 'error'); return; }
   const dados = {
     nome,
     grupo,                                                    // fix: grupo incluído em dados
@@ -2402,6 +2452,25 @@ async function saveHero() {
 let hiddenCats = new Set();
 let categoryNames = {};
 let catCustomImages = {};
+let categoriasRegistry = [];
+
+// Valores aceitos pelo select #editCatPai (value = o que é salvo em cat_pai; "Outros" exibe como "Estofados")
+const CATEGORIAS_PRINCIPAIS = ['Eletrodomésticos','Quarto','Sala de Jantar','Cozinha','Sala de Estar','Outros','Cama e Colchão','Escritório'];
+
+// Uniao da hierarquia derivada dos produtos com a hierarquia salva em `categorias` (inclui categorias/subcategorias ainda sem produto)
+function buildCategoriaHierarchy() {
+  const h = {};
+  allProducts.forEach(p => {
+    if(!p.catPai) return;
+    if(!h[p.catPai]) h[p.catPai] = new Set();
+    if(p.catFilho) h[p.catPai].add(p.catFilho);
+  });
+  categoriasRegistry.forEach(c => {
+    if(c.tipo === 'pai') { if(!h[c.nome_original]) h[c.nome_original] = new Set(); }
+    else if(c.tipo === 'filho' && c.pai_ref) { if(!h[c.pai_ref]) h[c.pai_ref] = new Set(); h[c.pai_ref].add(c.nome_original); }
+  });
+  return h;
+}
 
 function renderCatImagesList() {
   var cats = [];
@@ -2644,6 +2713,7 @@ async function loadConfig() {
     // Categorias
     const cats = await db.get('categorias', 'select=*');
     if(cats && cats.length) {
+      categoriasRegistry = cats;
       cats.forEach(c => {
         categoryNames[c.nome_original] = c.nome_exibicao;
         if(c.tipo === 'pai' && !c.visivel) hiddenCats.add(c.nome_original);
