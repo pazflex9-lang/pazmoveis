@@ -2740,9 +2740,20 @@ async function deleteCatFilho(pai, filho) {
 
 async function deleteCatPai(pai) {
   const n = countProdutosCatPai(pai);
-  if (n > 0) { showToast(`⚠️ ${n} produto(s) usam a categoria "${pai}". Mova-os antes de excluir.`, 'error'); return; }
-  if (!confirm(`Excluir a categoria "${pai}" e todas as suas subcategorias permanentemente?`)) return;
+  const msg = n > 0
+    ? `Esta categoria tem ${n} produto(s). Ao excluir, ficarão sem categoria. Deseja continuar?`
+    : 'Tem certeza que deseja excluir esta categoria?';
+  if (!confirm(msg)) return;
   showLoading('Excluindo categoria...');
+  if (n > 0) {
+    const okProdutos = await db.update('produtos',
+      { cat_pai: '', cat_filho: '', updated_at: new Date().toISOString() },
+      'cat_pai=eq.' + encodeURIComponent(pai)
+    );
+    if (!okProdutos) { hideLoading(); showToast('❌ Erro ao atualizar os produtos vinculados. Verifique o console.', 'error'); return; }
+    allProducts.forEach(p => { if (p.catPai === pai) { p.catPai = ''; p.catFilho = ''; } });
+    filterProds();
+  }
   const ok1 = await db.delete('categorias', 'nome_original=eq.' + encodeURIComponent(pai));
   const ok2 = catPaiRefSupported ? await db.delete('categorias', 'pai_ref=eq.' + encodeURIComponent(pai)) : true;
   hideLoading();
@@ -2752,7 +2763,7 @@ async function deleteCatPai(pai) {
   hiddenCats.delete(pai);
   renderCatTree();
   renderCatImagesList();
-  showToast('🗑️ Categoria excluída!', 'success');
+  showToast(n > 0 ? `🗑️ Categoria excluída! ${n} produto(s) ficaram sem categoria.` : '🗑️ Categoria excluída!', 'success');
 }
 
 function toggleAddCatPaiForm(show) {
