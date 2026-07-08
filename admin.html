@@ -2567,8 +2567,10 @@ async function checkCatPaiRefSupport() {
 function semPaiRef(row) { const { pai_ref, ...resto } = row; return resto; }
 
 function escJs(s) { return String(s).replace(/'/g, "\\'"); }
-function countProdutosCatPai(pai) { return allProducts.filter(p => p.catPai === pai).length; }
-function countProdutosCatFilho(pai, filho) { return allProducts.filter(p => p.catPai === pai && p.catFilho === filho).length; }
+// Contam por categoria/subcategoria CANÔNICA (normalizada) — um produto com cat_pai="Sala De Estar" ou
+// "sala de estar" conta igual a um com "Sala de Estar", pois todos normalizam para o mesmo valor.
+function countProdutosCatPai(pai) { return allProducts.filter(p => normalizePai(p.catPai) === pai).length; }
+function countProdutosCatFilho(pai, filho) { return allProducts.filter(p => normalizePai(p.catPai) === pai && normalizeFilho(p.catFilho, pai) === filho).length; }
 function nomeCategoriaJaExiste(nome) {
   const n = nome.toLowerCase();
   return categoriasRegistry.some(c => c.nome_original.toLowerCase() === n)
@@ -2774,22 +2776,36 @@ async function confirmAddBolha() {
   showToast('✅ Bolha criada!', 'success');
 }
 
-// Cruza a árvore bruta (allProducts + categoriasRegistry) com a estrutura canônica do site: só entram
-// categorias-pai que são exatamente uma das 8 canônicas, e subcategorias que são exatamente um dos
-// valores do _FILHO_MAP (o mesmo mapa de normalização do index.html.html). Variações brutas ("Sala DE
-// Estar", "Sofá" solto, etc.) somem da lista — quem quiser limpá-las edita o produto (dropdown já normaliza).
+// Estrutura EXATA do menu real do site (conferida direto no banco: normalizePai/normalizeFilho aplicados
+// aos produtos ativos com preço, o mesmo cálculo que o index.html.html faz para montar o menu). "Outros" é
+// o valor bruto por trás da categoria exibida como "Estofados" (ver categoryNames). Qualquer subcategoria
+// fora dessas listas (variação de grafia, lixo de fornecedor etc.) não aparece em Visibilidade e Nomes.
+const SUBCATEGORIAS_VALIDAS_POR_PAI = {
+  'Eletrodomésticos': ['Fogões e Cooktops','Ventiladores','Ar-condicionado','Som','Geladeiras e Freezers','Fornos e Micro-ondas','Lavadoras','TV e Vídeo'],
+  'Quarto': ['Cama E Beliche','Linha Infantil','Cabeceiras','Guarda-roupas','Cômodas','Acessórios','Multiuso e Sapateiras','Penteadeiras'],
+  'Sala de Jantar': ['Conjuntos De Mesas E Cadeiras','Cadeiras','Buffets','Cristaleiras'],
+  'Cozinha': ['Aéreo De Cozinha','Balcão De Cozinha','Kit De Cozinha','Fruteira','Complementos','Cozinha Completa','Paneleiros'],
+  'Sala de Estar': ['Aparadores','Racks E Bancadas','Racks e Painéis','Estante Home','Mesas Lateral, Canto E Centro','Sofás e Estofados'],
+  'Outros': ['Conjunto Sofá 3 E 2 Lugares','Poltronas','Conjunto Sofá 2 E 3 Lugares','Sofá Retrátil','Sofá De Canto'],
+  'Cama e Colchão': ['Colchão Casal','Colchão Solteiro','Cama Box Casal','Base Box','Colchões','Cama Box Solteiro'],
+  'Escritório': ['Escrivaninhas e Mesas'],
+};
+
+// Cruza a árvore CANÔNICA (produtos + categoriasRegistry, já normalizados via normalizePai/normalizeFilho
+// em buildCategoriaHierarchyCanonica) com a estrutura real do site acima — só entram exatamente essas
+// categorias e subcategorias, o resto (grafia divergente, lixo de fornecedor etc.) some da lista.
 function filtrarHierarquiaCanonica(hierarquiaBruta) {
-  const filhosValidos = new Set(Object.values(_FILHO_MAP));
   const h = {};
-  CATEGORIAS_PRINCIPAIS.forEach(pai => {
+  Object.keys(SUBCATEGORIAS_VALIDAS_POR_PAI).forEach(pai => {
     if (!hierarquiaBruta[pai]) return;
-    h[pai] = new Set([...hierarquiaBruta[pai]].filter(f => filhosValidos.has(f)));
+    const validos = SUBCATEGORIAS_VALIDAS_POR_PAI[pai];
+    h[pai] = new Set([...hierarquiaBruta[pai]].filter(f => validos.includes(f)));
   });
   return h;
 }
 
 function renderCatTree() {
-  const hierarquia = filtrarHierarquiaCanonica(buildCategoriaHierarchy());
+  const hierarquia = filtrarHierarquiaCanonica(buildCategoriaHierarchyCanonica());
   const tree = document.getElementById('catTree');
   if(!Object.keys(hierarquia).length){ tree.innerHTML='<p style="color:var(--gray-400);text-align:center;padding:20px">Carregue o CSV primeiro.</p>'; return; }
   tree.innerHTML = Object.entries(hierarquia).map(([pai,filhos])=>{
@@ -2830,20 +2846,32 @@ function renderCatTree() {
 
 function toggleCat(pai, visible) { if(visible) hiddenCats.delete(pai); else hiddenCats.add(pai); }
 
+// Atualiza produtos por lista de `cod` (não por texto de categoria) — necessário porque a mesma categoria
+// canônica pode ter vários produtos com grafias brutas diferentes ("Sala De Estar", "sala de estar"...)
+// que um filtro de texto exato no Supabase não pegaria todas de uma vez.
+async function updateProdutosEmLote(cods, dados) {
+  const LOTE = 100;
+  let ok = true;
+  for (let i = 0; i < cods.length; i += LOTE) {
+    const lote = cods.slice(i, i + LOTE).map(c => encodeURIComponent(c)).join(',');
+    const res = await db.update('produtos', dados, 'cod=in.(' + lote + ')');
+    if (!res) ok = false;
+  }
+  return ok;
+}
+
 async function deleteCatFilho(pai, filho) {
-  const n = countProdutosCatFilho(pai, filho);
+  const produtosAfetados = allProducts.filter(p => normalizePai(p.catPai) === pai && normalizeFilho(p.catFilho, pai) === filho);
+  const n = produtosAfetados.length;
   const msg = n > 0
     ? `Esta subcategoria tem ${n} produto(s) vinculado(s). Ao excluir, esses produtos ficarão sem subcategoria. Deseja continuar?`
     : 'Tem certeza que deseja excluir esta subcategoria?';
   if (!confirm(msg)) return;
   showLoading('Excluindo subcategoria...');
   if (n > 0) {
-    const okProdutos = await db.update('produtos',
-      { cat_filho: '', updated_at: new Date().toISOString() },
-      'cat_pai=eq.' + encodeURIComponent(pai) + '&cat_filho=eq.' + encodeURIComponent(filho)
-    );
+    const okProdutos = await updateProdutosEmLote(produtosAfetados.map(p => p.cod), { cat_filho: '', updated_at: new Date().toISOString() });
     if (!okProdutos) { hideLoading(); showToast('❌ Erro ao atualizar os produtos vinculados. Verifique o console.', 'error'); return; }
-    allProducts.forEach(p => { if (p.catPai === pai && p.catFilho === filho) p.catFilho = ''; });
+    produtosAfetados.forEach(p => { p.catFilho = ''; });
     filterProds();
   }
   const ok = await db.delete('categorias', 'nome_original=eq.' + encodeURIComponent(filho));
@@ -2856,19 +2884,17 @@ async function deleteCatFilho(pai, filho) {
 }
 
 async function deleteCatPai(pai) {
-  const n = countProdutosCatPai(pai);
+  const produtosAfetados = allProducts.filter(p => normalizePai(p.catPai) === pai);
+  const n = produtosAfetados.length;
   const msg = n > 0
     ? `Esta categoria tem ${n} produto(s). Ao excluir, ficarão sem categoria. Deseja continuar?`
     : 'Tem certeza que deseja excluir esta categoria?';
   if (!confirm(msg)) return;
   showLoading('Excluindo categoria...');
   if (n > 0) {
-    const okProdutos = await db.update('produtos',
-      { cat_pai: '', cat_filho: '', updated_at: new Date().toISOString() },
-      'cat_pai=eq.' + encodeURIComponent(pai)
-    );
+    const okProdutos = await updateProdutosEmLote(produtosAfetados.map(p => p.cod), { cat_pai: '', cat_filho: '', updated_at: new Date().toISOString() });
     if (!okProdutos) { hideLoading(); showToast('❌ Erro ao atualizar os produtos vinculados. Verifique o console.', 'error'); return; }
-    allProducts.forEach(p => { if (p.catPai === pai) { p.catPai = ''; p.catFilho = ''; } });
+    produtosAfetados.forEach(p => { p.catPai = ''; p.catFilho = ''; });
     filterProds();
   }
   const ok1 = await db.delete('categorias', 'nome_original=eq.' + encodeURIComponent(pai));
@@ -2933,8 +2959,9 @@ async function confirmAddCatFilho(pai) {
 }
 async function saveCats() {
   showLoading('Salvando categorias...');
-  // Salva nomes e visibilidade (inclui categorias/subcategorias sem produto, já cadastradas via os botões "+ Adicionar")
-  const hierarquia = buildCategoriaHierarchy();
+  // Salva nomes e visibilidade da mesma árvore canônica+filtrada exibida em "Visibilidade e Nomes"
+  // (inclui categorias/subcategorias sem produto, já cadastradas via os botões "+ Adicionar")
+  const hierarquia = filtrarHierarquiaCanonica(buildCategoriaHierarchyCanonica());
   let rows = [];
   Object.entries(hierarquia).forEach(([pai, filhos]) => {
     rows.push({ nome_original: pai, nome_exibicao: categoryNames[pai]||pai, visivel: !hiddenCats.has(pai), tipo: 'pai', pai_ref: null });
