@@ -3474,10 +3474,11 @@ function toggleCart(){document.getElementById('cartDrawer').classList.toggle('op
 
 /* ══ FAVORITOS ══ */
 function toggleFavorite(cod){
+  const _u=JSON.parse(localStorage.getItem('paz_user')||'null');
+  if(!_u){_pendingAuthAction=()=>toggleFavorite(cod);openLoginModal();return;}
   const p=allProducts.find(x=>x.cod===cod);if(!p)return;
   const idx=favorites.findIndex(f=>f.cod===cod);
-  const _u=JSON.parse(localStorage.getItem('paz_user')||'null');
-  const _email=(_u&&_u.email)||'anonimo';
+  const _email=_u.email||'anonimo';
   if(idx>=0){
     favorites.splice(idx,1);showToast('💔 Removido dos favoritos');
     supa.del('favoritos',`produto_cod=eq.${encodeURIComponent(cod)}&usuario_email=eq.${encodeURIComponent(_email)}`).catch(()=>{});
@@ -3503,8 +3504,9 @@ function renderFavorites(){
 }
 function toggleFavDrawer(){document.getElementById('favDrawer').classList.toggle('open');document.getElementById('favOverlay').classList.toggle('show');}
 /* ══ LOGIN ══ */
+let _pendingAuthAction=null; // ação a executar automaticamente após login/cadastro (favoritar, finalizar pedido...)
 function openLoginModal(){document.getElementById('loginModal').classList.add('show');}
-function closeLoginModal(){document.getElementById('loginModal').classList.remove('show');}
+function closeLoginModal(){document.getElementById('loginModal').classList.remove('show');_pendingAuthAction=null;}
 function switchLoginTab(tab){
   document.getElementById('formEntrar').style.display=tab==='entrar'?'':'none';
   document.getElementById('formCadastro').style.display=tab==='cadastro'?'':'none';
@@ -3534,7 +3536,9 @@ async function loginUser(){
   if(!u){showToast('⚠️ E-mail ou senha incorretos!');return;}
   localStorage.setItem('paz_user',JSON.stringify(u));
   setLoggedIn(u);
+  const _pending=_pendingAuthAction;
   closeLoginModal();showToast('✅ Bem-vindo, '+u.nome.split(' ')[0]+'!','success');
+  if(_pending)_pending();
 }
 function maskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);if(v.length<=2)v='('+v;else if(v.length<=6)v='('+v.slice(0,2)+') '+v.slice(2);else if(v.length<=10)v='('+v.slice(0,2)+') '+v.slice(2,6)+'-'+v.slice(6);else v='('+v.slice(0,2)+') '+v.slice(2,7)+'-'+v.slice(7);el.value=v;}
 async function createAccount(){
@@ -3553,7 +3557,9 @@ async function createAccount(){
   // Salva no Supabase (tabela usuarios)
   supa.upsert('usuarios',{nome,email,telefone:tel,senha_hash:senha},'email').catch(()=>{});
   setLoggedIn(u);
+  const _pending=_pendingAuthAction;
   closeLoginModal();showToast('✅ Conta criada! Bem-vindo, '+nome.split(' ')[0]+'!','success');
+  if(_pending)_pending();
 }
 
 /* ══ USER DROPDOWN ══ */
@@ -3640,6 +3646,8 @@ function perfilFotoChange(e){
 function zapProduct(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const refLine=p.ref?`\nRef: ${p.ref}`:'';const msg=encodeURIComponent(`Olá! Tenho interesse no produto:\n\n*${p.nome}*${refLine}\nPreço: ${formatPrice(p.preco)}\n\nPoderia me dar mais informações?`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
 function checkoutWhatsApp(){
   if(!cart.length)return;
+  const _u=JSON.parse(localStorage.getItem('paz_user')||'null');
+  if(!_u){_pendingAuthAction=()=>checkoutWhatsApp();openLoginModal();return;}
   const items=cart.map(c=>`- ${c.nome} x${c.qty} - ${formatPrice(c.preco*c.qty)}`).join('\n');
   const total=formatPrice(cart.reduce((s,c)=>s+c.preco*c.qty,0));
   const msg=encodeURIComponent(`Olá! Gostaria de finalizar meu pedido:\n\n🛒 *Meu Pedido:*\n${items}\n\n💰 *Total: ${total}*\n\nAguardo confirmação!`);
