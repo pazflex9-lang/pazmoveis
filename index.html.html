@@ -655,26 +655,13 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 .cart-footer{padding:18px 22px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));border-top:2px solid var(--gray-200)}
 .cart-total{display:flex;justify-content:space-between;font-size:17px;font-weight:900;margin-bottom:14px}
 .cart-total span:last-child{color:var(--red);font-size:22px}
-.btn-checkout{width:100%;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:var(--font);margin-bottom:8px;transition:background .2s}
-.btn-checkout:hover{background:var(--blue-dark)}
 .btn-checkout-wpp{width:100%;background:#25D366;color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:7px;transition:background .2s}
 .btn-checkout-wpp:hover{background:#1ebe5d}
-
-/* ── CHECKOUT ── */
-.checkout-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
-.checkout-modal.show{display:flex}
-.checkout-box{background:#fff;border-radius:14px;max-width:480px;width:100%;padding:28px;animation:slideUp .28s ease}
 @keyframes slideUp{from{transform:translateY(32px);opacity:0}to{transform:translateY(0);opacity:1}}
-.checkout-box h2{font-size:22px;font-weight:900;margin-bottom:20px;text-align:center}
 .form-group{margin-bottom:14px}
 .form-group label{display:block;font-size:12px;font-weight:800;color:var(--gray-600);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:var(--font);font-size:14px;outline:none;transition:border .2s}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
-.form-row{display:flex;gap:10px}
-.form-row .form-group{flex:1}
-.btn-confirm{width:100%;background:var(--red);color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:900;cursor:pointer;font-family:var(--font);margin-top:6px;transition:background .2s}
-.btn-confirm:hover{background:var(--red-dark)}
-.btn-cancel-chk{width:100%;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:var(--font);margin-top:6px}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:22px;right:22px;background:var(--gray-800);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;z-index:9999;transform:translateY(90px);transition:transform .28s;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.14)}
@@ -2101,8 +2088,7 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
   <div class="cart-items" id="cartItems"><div class="cart-empty"><span>🛒</span>Seu carrinho está vazio</div></div>
   <div class="cart-footer">
     <div class="cart-total"><span>Total</span><span id="cartTotal">R$ 0,00</span></div>
-    <button class="btn-checkout" onclick="openCheckout()">Finalizar Pedido</button>
-    <button class="btn-checkout-wpp" onclick="checkoutWhatsApp()">💬 Pedir pelo WhatsApp</button>
+    <button class="btn-checkout-wpp" onclick="checkoutWhatsApp()">💬 Finalizar Pedido pelo WhatsApp</button>
   </div>
 </div>
 
@@ -2203,28 +2189,6 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
   </div>
   <div class="perfil-body" id="perfilPedidosBody" style="display:none">
     <div id="pedidosList"></div>
-  </div>
-</div>
-
-<!-- CHECKOUT -->
-<div class="checkout-modal" id="checkoutModal">
-  <div class="checkout-box">
-    <h2>📋 Finalizar Pedido</h2>
-    <div class="form-row">
-      <div class="form-group"><label>Nome *</label><input type="text" id="chkNome" placeholder="Seu nome"></div>
-      <div class="form-group"><label>Telefone *</label><input type="tel" id="chkTel" placeholder="(71) 99999-9999"></div>
-    </div>
-    <div class="form-group"><label>E-mail</label><input type="email" id="chkEmail" placeholder="seu@email.com"></div>
-    <div class="form-group"><label>Endereço *</label><input type="text" id="chkEndereco" placeholder="Rua, número, bairro, cidade"></div>
-    <div class="form-group"><label>Pagamento</label>
-      <select id="chkPagamento">
-        <option>Pix (5% de desconto)</option><option>Cartão de crédito 12x sem juros</option>
-        <option>Cartão de débito</option><option>Boleto bancário</option><option>Dinheiro</option>
-      </select>
-    </div>
-    <div class="form-group"><label>Observações</label><textarea id="chkObs" rows="2" placeholder="Cor desejada, observações..."></textarea></div>
-    <button class="btn-confirm" onclick="confirmOrder()">✅ Confirmar Pedido</button>
-    <button class="btn-cancel-chk" onclick="closeCheckout()">Cancelar</button>
   </div>
 </div>
 
@@ -3674,33 +3638,13 @@ function perfilFotoChange(e){
 
 /* ══ WHATSAPP ══ */
 function zapProduct(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const refLine=p.ref?`\nRef: ${p.ref}`:'';const msg=encodeURIComponent(`Olá! Tenho interesse no produto:\n\n*${p.nome}*${refLine}\nPreço: ${formatPrice(p.preco)}\n\nPoderia me dar mais informações?`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
-function checkoutWhatsApp(){if(!cart.length)return;const items=cart.map(c=>`• ${c.nome} (${c.qty}x) — ${formatPrice(c.preco*c.qty)}`).join('\n');const total=formatPrice(cart.reduce((s,c)=>s+c.preco*c.qty,0));const msg=encodeURIComponent(`Olá! Gostaria de fazer um pedido:\n\n${items}\n\n*Total: ${total}*`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
-
-/* ══ CHECKOUT ══ */
-function openCheckout(){document.getElementById('checkoutModal').classList.add('show');}
-function closeCheckout(){document.getElementById('checkoutModal').classList.remove('show');}
-function confirmOrder(){
-  const nome=document.getElementById('chkNome').value.trim(),tel=document.getElementById('chkTel').value.trim(),end=document.getElementById('chkEndereco').value.trim();
-  if(!nome||!tel||!end){showToast('⚠️ Preencha os campos obrigatórios!');return;}
-  const pag=document.getElementById('chkPagamento').value,obs=document.getElementById('chkObs').value;
-  const items=cart.map(c=>`• ${c.nome} (${c.qty}x) — ${formatPrice(c.preco*c.qty)}`).join('\n');
-  const totalNum=cart.reduce((s,c)=>s+c.preco*c.qty,0);
-  const total=formatPrice(totalNum);
-  const itensPedido=cart.map(c=>({cod:c.cod,nome:c.nome,preco:c.preco,qty:c.qty,foto:c.fotos?c.fotos.split('|')[0].trim():''}));
-  const pedido={id:'PAZ-'+Date.now(),data:new Date().toISOString(),nome,tel,endereco:end,pagamento:pag,obs,items:itensPedido,total:totalNum,status:'Pendente'};
-  const _peds=JSON.parse(localStorage.getItem('paz_pedidos')||'[]');_peds.unshift(pedido);localStorage.setItem('paz_pedidos',JSON.stringify(_peds));
-  // Salva no Supabase
-  const _u=JSON.parse(localStorage.getItem('paz_user')||'null');
-  const _email=(_u&&_u.email)||'anonimo';
-  supa.upsert('pedidos',{
-    usuario_email:_email,cliente_nome:nome,cliente_tel:tel,
-    cliente_endereco:end,pagamento:pag,obs,
-    itens:itensPedido,total:totalNum,status:'Pendente',
-    created_at:new Date().toISOString()
-  },'id').catch(e=>console.warn('Pedido Supabase:',e));
-  const msg=encodeURIComponent(`🛒 *NOVO PEDIDO - PAZ MÓVEIS*\n\n👤 ${nome}\n📞 ${tel}\n📧 ${document.getElementById('chkEmail').value}\n📍 ${end}\n💳 ${pag}\n\n*ITENS:*\n${items}\n\n*TOTAL: ${total}*\n\n${obs?`📝 ${obs}`:''}`);
-  window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');
-  cart=[];renderCart();closeCheckout();toggleCart();showToast('✅ Pedido enviado!','success');
+function checkoutWhatsApp(){
+  if(!cart.length)return;
+  const items=cart.map(c=>`- ${c.nome} x${c.qty} - ${formatPrice(c.preco*c.qty)}`).join('\n');
+  const total=formatPrice(cart.reduce((s,c)=>s+c.preco*c.qty,0));
+  const msg=encodeURIComponent(`Olá! Gostaria de finalizar meu pedido:\n\n🛒 *Meu Pedido:*\n${items}\n\n💰 *Total: ${total}*\n\nAguardo confirmação!`);
+  window.open(`https://wa.me/5571992655081?text=${msg}`,'_blank');
+  cart=[];renderCart();toggleCart();showToast('✅ Pedido enviado!','success');
 }
 
 /* ══ ADMIN ══ */
