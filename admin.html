@@ -303,6 +303,7 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
 }
 .cat-filho-item:last-child { border-bottom:none; }
 .cat-filho-nome { flex:1; }
+.cat-filho-count { font-size:11px; color:var(--gray-400); flex-shrink:0; }
 .cat-filho-rename { width:160px; padding:5px 10px; border:1.5px solid var(--gray-200); border-radius:7px; font-size:12px; font-family:var(--font-body); outline:none; }
 .cat-del-btn { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:15px; padding:4px 6px; border-radius:5px; transition:all .15s; flex-shrink:0; }
 .cat-del-btn:hover { color:var(--red); background:#FFF5F5; }
@@ -2613,10 +2614,12 @@ function renderCatTree() {
   tree.innerHTML = Object.entries(hierarquia).map(([pai,filhos])=>{
     const paiTemProdutos = countProdutosCatPai(pai) > 0;
     const filhosHtml = [...filhos].map(f=>{
-      const filhoTemProdutos = countProdutosCatFilho(pai, f) > 0;
+      const n = countProdutosCatFilho(pai, f);
+      const countLabel = n > 0 ? `(${n})` : '(sem produtos ainda)';
       return `
         <div class="cat-filho-item">
-          <span class="cat-filho-nome">↳ ${f}${filhoTemProdutos?'':' <span style="font-size:10px;color:var(--gray-400)">(sem produtos ainda)</span>'}</span>
+          <span class="cat-filho-nome">↳ ${f}</span>
+          <span class="cat-filho-count">${countLabel}</span>
           <input class="cat-filho-rename" type="text" value="${categoryNames[f]||f}" placeholder="Renomear" data-orig="${f}" oninput="categoryNames[this.dataset.orig]=this.value">
           <button class="cat-del-btn" title="Excluir subcategoria" onclick="deleteCatFilho('${escJs(pai)}','${escJs(f)}')">🗑️</button>
         </div>`;
