@@ -1036,6 +1036,18 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
   </div>
 </div>
 
+<!-- MODAL DETALHES DO PEDIDO -->
+<div class="modal-overlay" id="pedidoDetalheModal">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-head">
+      <h3>📋 Detalhes do Pedido</h3>
+      <button class="modal-close" onclick="closeDetalhePedido()">✕</button>
+    </div>
+    <div class="modal-body-content" id="pedidoDetalheContent" style="max-height:75vh;overflow-y:auto;padding:20px">
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR PRODUTO -->
 <div class="modal-overlay" id="prodModal">
   <div class="modal-box">
@@ -3075,12 +3087,15 @@ async function loadProdutosDoSupabase() {
 }
 
 // ── PEDIDOS ────────────────────────────────────────────
+let _pedidosCache = [];
+
 async function loadPedidos() {
   const body = document.getElementById('pedidosTableBody');
   const countEl = document.getElementById('pedidosCount');
   body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--gray-400)">⏳ Carregando...</td></tr>';
   try {
     const pedidos = await db.get('pedidos', 'select=*&order=created_at.desc');
+    _pedidosCache = pedidos || [];
     if (!pedidos || !pedidos.length) {
       body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400)">Nenhum pedido encontrado. Os pedidos aparecerão aqui quando os clientes realizarem compras.</td></tr>';
       countEl.textContent = '0 pedidos';
@@ -3108,7 +3123,10 @@ async function loadPedidos() {
         <td><span class="prod-price">${total}</span></td>
         <td><span class="badge-pedido ${statusKey}">${statusRaw}</span></td>
         <td>
-          <select class="status-select-pedido" onchange="updatePedidoStatus('${p.id}',this.value)">${opts}</select>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button class="btn-outline" style="padding:6px 10px;font-size:12px;white-space:nowrap" onclick="abrirDetalhePedido('${p.id}')">👁️ Ver detalhes</button>
+            <select class="status-select-pedido" onchange="updatePedidoStatus('${p.id}',this.value)">${opts}</select>
+          </div>
         </td>
       </tr>`;
     }).join('');
@@ -3125,6 +3143,66 @@ async function updatePedidoStatus(id, novoStatus) {
   showToast(`✅ Status atualizado para "${novoStatus}"!`, 'success');
   loadPedidos();
 }
+
+function abrirDetalhePedido(id) {
+  const p = _pedidosCache.find(x => String(x.id) === String(id));
+  if (!p) { showToast('⚠️ Pedido não encontrado.', 'error'); return; }
+
+  const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—';
+  const hora = p.created_at ? new Date(p.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : '';
+  const total = p.total != null ? `R$ ${parseFloat(p.total).toFixed(2).replace('.',',')}` : '—';
+  const statusRaw = p.status || 'Pendente';
+  const statusKey = statusRaw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const cliente = p.cliente_nome || p.nome || '—';
+  const email = (p.usuario_email && p.usuario_email !== 'anonimo') ? p.usuario_email : '—';
+
+  let itens = [];
+  if (Array.isArray(p.itens)) itens = p.itens;
+  else if (typeof p.itens === 'string') { try { itens = JSON.parse(p.itens) || []; } catch(e) { itens = []; } }
+
+  const itensHtml = itens.length ? itens.map(it => {
+    const preco = parseFloat(it.preco) || 0;
+    const qty = parseInt(it.qty) || 1;
+    const subtotal = preco * qty;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+      ${it.foto ? `<img src="${it.foto}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid var(--gray-200)" onerror="this.style.display='none'">` : ''}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${it.nome || 'Produto'}</div>
+        <div style="font-size:11px;color:var(--gray-400)">Qtd: ${qty} × R$ ${preco.toFixed(2).replace('.',',')}</div>
+      </div>
+      <div style="font-size:13px;font-weight:800;white-space:nowrap">R$ ${subtotal.toFixed(2).replace('.',',')}</div>
+    </div>`;
+  }).join('') : '<p style="color:var(--gray-400);text-align:center;padding:16px">Nenhum item registrado neste pedido.</p>';
+
+  document.getElementById('pedidoDetalheContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span style="font-family:monospace;font-size:12px;color:var(--gray-400)">#${(p.id||'').toString().slice(-8).toUpperCase()}</span>
+      <span class="badge-pedido ${statusKey}">${statusRaw}</span>
+    </div>
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:16px">${data} às ${hora}</div>
+
+    <div style="background:var(--gray-50);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:900;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">👤 Cliente</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:2px">${cliente}</div>
+      <div style="font-size:12px;color:var(--gray-600)">📞 ${p.cliente_tel || p.telefone || '—'}</div>
+      <div style="font-size:12px;color:var(--gray-600)">✉️ ${email}</div>
+      ${p.cliente_endereco ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px">📍 ${p.cliente_endereco}</div>` : ''}
+      ${p.pagamento ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px">💳 ${p.pagamento}</div>` : ''}
+      ${p.obs ? `<div style="font-size:12px;color:var(--gray-600);margin-top:4px">📝 ${p.obs}</div>` : ''}
+    </div>
+
+    <div style="font-size:12px;font-weight:900;color:var(--gray-600);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🛒 Itens do Pedido</div>
+    <div style="margin-bottom:14px">${itensHtml}</div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:2px solid var(--gray-200)">
+      <span style="font-size:14px;font-weight:800">Total</span>
+      <span style="font-size:18px;font-weight:900;color:var(--red)">${total}</span>
+    </div>
+  `;
+  document.getElementById('pedidoDetalheModal').classList.add('show');
+}
+
+function closeDetalhePedido() { document.getElementById('pedidoDetalheModal').classList.remove('show'); }
 
 // ── USUÁRIOS ───────────────────────────────────────────
 async function loadUsuarios() {
