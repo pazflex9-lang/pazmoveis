@@ -304,6 +304,10 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
 .cat-filho-item:last-child { border-bottom:none; }
 .cat-filho-nome { flex:1; }
 .cat-filho-rename { width:160px; padding:5px 10px; border:1.5px solid var(--gray-200); border-radius:7px; font-size:12px; font-family:var(--font-body); outline:none; }
+.cat-del-btn { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:15px; padding:4px 6px; border-radius:5px; transition:all .15s; flex-shrink:0; }
+.cat-del-btn:hover { color:var(--red); background:#FFF5F5; }
+.btn-add-sub { width:100%; padding:7px; border:1.5px dashed var(--gray-200); border-radius:7px; background:none; color:var(--gray-600); font-family:var(--font-body); font-size:12px; font-weight:800; cursor:pointer; transition:all .2s; }
+.btn-add-sub:hover { border-color:var(--red); color:var(--red); background:#FFF5F5; }
 
 /* ── LINKS FOOTER ── */
 .link-item { display:flex; gap:8px; margin-bottom:8px; align-items:center; }
@@ -823,7 +827,16 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
           <div id="catImgList" style="display:flex;flex-direction:column;gap:12px">
             <p style="color:var(--gray-400);text-align:center;padding:20px">Carregue o CSV primeiro.</p>
           </div>
-          <button class="btn-primary" style="margin-top:16px" onclick="saveCatImages()">💾 Salvar Imagens das Bolhas</button>
+          <div id="addBolhaForm" style="display:none;gap:8px;margin-top:12px;padding:12px;background:var(--gray-50);border-radius:8px;flex-wrap:wrap">
+            <input type="text" id="novaBolhaNome" placeholder="Nome da categoria" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:var(--font-body)">
+            <input type="text" id="novaBolhaUrl" placeholder="URL da imagem" style="flex:2;min-width:200px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:var(--font-body)">
+            <button class="btn-primary" onclick="confirmAddBolha()">✓ Criar</button>
+            <button class="btn-outline" onclick="toggleAddBolhaForm(false)">✕ Cancelar</button>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="btn-outline" onclick="toggleAddBolhaForm()">＋ Adicionar bolha</button>
+            <button class="btn-primary" style="flex:1" onclick="saveCatImages()">💾 Salvar Imagens das Bolhas</button>
+          </div>
         </div>
 
         <div class="card">
@@ -831,6 +844,12 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
           <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
             Marque/desmarque para mostrar ou ocultar no menu. Renomeie conforme necessário.
           </p>
+          <div id="addCatPaiForm" style="display:none;gap:8px;margin-bottom:14px;padding:12px;background:var(--gray-50);border-radius:8px;flex-wrap:wrap">
+            <input type="text" id="novaCatPaiNome" placeholder="Nome da nova categoria" style="flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:var(--font-body)">
+            <button class="btn-primary" onclick="confirmAddCatPai()">✓ Criar</button>
+            <button class="btn-outline" onclick="toggleAddCatPaiForm(false)">✕ Cancelar</button>
+          </div>
+          <button class="btn-outline" style="margin-bottom:14px" onclick="toggleAddCatPaiForm()">＋ Adicionar categoria</button>
           <div class="cat-tree" id="catTree">
             <p style="color:var(--gray-400);text-align:center;padding:20px">Carregue o CSV primeiro.</p>
           </div>
@@ -2453,6 +2472,28 @@ let hiddenCats = new Set();
 let categoryNames = {};
 let catCustomImages = {};
 let categoriasRegistry = [];
+let _addFilhoOpenFor = null; // nome do pai com o form de "adicionar subcategoria" aberto, ou null
+
+// A coluna pai_ref precisa ser criada manualmente no Supabase (ALTER TABLE categorias ADD COLUMN pai_ref text;)
+// antes de "+ Adicionar subcategoria"/"+ Adicionar categoria" funcionarem. Este check evita que o resto do
+// admin (renomear/ocultar/"Salvar Categorias") quebre caso a coluna ainda não exista.
+let catPaiRefSupported = false;
+async function checkCatPaiRefSupport() {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/categorias?select=pai_ref&limit=1`, { headers: _getH() });
+    catPaiRefSupported = r.ok;
+  } catch(e) { catPaiRefSupported = false; }
+}
+function semPaiRef(row) { const { pai_ref, ...resto } = row; return resto; }
+
+function escJs(s) { return String(s).replace(/'/g, "\\'"); }
+function countProdutosCatPai(pai) { return allProducts.filter(p => p.catPai === pai).length; }
+function countProdutosCatFilho(pai, filho) { return allProducts.filter(p => p.catPai === pai && p.catFilho === filho).length; }
+function nomeCategoriaJaExiste(nome) {
+  const n = nome.toLowerCase();
+  return categoriasRegistry.some(c => c.nome_original.toLowerCase() === n)
+    || allProducts.some(p => (p.catPai||'').toLowerCase() === n || (p.catFilho||'').toLowerCase() === n);
+}
 
 // Valores aceitos pelo select #editCatPai (value = o que é salvo em cat_pai; "Outros" exibe como "Estofados")
 const CATEGORIAS_PRINCIPAIS = ['Eletrodomésticos','Quarto','Sala de Jantar','Cozinha','Sala de Estar','Outros','Cama e Colchão','Escritório'];
@@ -2473,9 +2514,7 @@ function buildCategoriaHierarchy() {
 }
 
 function renderCatImagesList() {
-  var cats = [];
-  allProducts.forEach(function(p){ if(p.catPai && cats.indexOf(p.catPai)===-1) cats.push(p.catPai); });
-  cats.sort();
+  var cats = Object.keys(buildCategoriaHierarchy()).sort();
   var list = document.getElementById('catImgList');
   if (!cats.length) { list.innerHTML = '<p style="color:#aaa;text-align:center;padding:20px">Nenhuma categoria encontrada.</p>'; return; }
   var html = '';
@@ -2485,23 +2524,26 @@ function renderCatImagesList() {
     var prod = null;
     for(var i=0;i<allProducts.length;i++){ if(allProducts[i].catPai===cat && allProducts[i].fotos){ prod=allProducts[i]; break; } }
     var defImg = prod ? prod.fotos.split('|')[0].trim() : '';
+    var temProdutos = allProducts.some(function(p){ return p.catPai===cat; });
     html += '<div style="display:flex;align-items:center;gap:12px;padding:10px;background:#f9f9f9;border-radius:8px;margin-bottom:6px">';
     html += '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid #ddd;background:#eee">';
     html += '<img id="prev_' + cfgKey + '" src="' + (val||defImg) + '" style="width:100%;height:100%;object-fit:cover">';
     html += '</div><div style="flex:1">';
-    html += '<div style="font-weight:700;font-size:13px;margin-bottom:6px">' + cat + '</div>';
+    html += '<div style="font-weight:700;font-size:13px;margin-bottom:6px">' + cat + (temProdutos?'':' <span style="font-weight:400;font-size:10px;color:#aaa">(sem produtos ainda)</span>') + '</div>';
     html += '<input type="text" id="inp_' + cfgKey + '" value="' + val + '"';
     html += ' placeholder="Cole a URL da imagem (ou vazio = usa foto do produto)"';
     html += ' style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;box-sizing:border-box"';
     html += ' data-def="' + defImg + '" data-key="' + cfgKey + '"';
     html += ' oninput="var k=this.getAttribute(\'data-key\');var d=this.getAttribute(\'data-def\');document.getElementById(\'prev_\'+k).src=this.value||d;">';
-    html += '</div></div>';
+    html += '</div>';
+    html += '<button class="cat-del-btn" title="Remover bolha" onclick="removeCatBubble(\'' + cfgKey + '\')">🗑️</button>';
+    html += '</div>';
   });
   list.innerHTML = html;
 }
 
 async function saveCatImages() {
-  const cats = [...new Set(allProducts.map(p => p.catPai).filter(Boolean))];
+  const cats = Object.keys(buildCategoriaHierarchy());
   const obj = {};
   cats.forEach(cat => {
     const cfgKey = 'cat_img_' + cat.replace(/[^a-zA-Z0-9]/g,'_');
@@ -2515,47 +2557,188 @@ async function saveCatImages() {
   showToast('Imagens das bolhas salvas!', 'success');
 }
 
+async function removeCatBubble(cfgKey) {
+  if (!confirm('Remover a imagem desta bolha? A categoria em si não será apagada.')) return;
+  showLoading('Removendo bolha...');
+  await db.delete('configuracoes', 'chave=eq.' + encodeURIComponent(cfgKey));
+  hideLoading();
+  delete catCustomImages[cfgKey];
+  renderCatImagesList();
+  showToast('🗑️ Bolha removida!', 'success');
+}
+
+function toggleAddBolhaForm(show) {
+  const form = document.getElementById('addBolhaForm');
+  const willShow = show === undefined ? form.style.display === 'none' : show;
+  form.style.display = willShow ? 'flex' : 'none';
+  if (willShow) { document.getElementById('novaBolhaNome').value = ''; document.getElementById('novaBolhaUrl').value = ''; }
+}
+
+async function confirmAddBolha() {
+  const nome = document.getElementById('novaBolhaNome').value.trim();
+  const url  = document.getElementById('novaBolhaUrl').value.trim();
+  if (!nome) { showToast('⚠️ Informe o nome da categoria.', 'error'); return; }
+  if (!url)  { showToast('⚠️ Informe a URL da imagem.', 'error'); return; }
+  const hierarquia = buildCategoriaHierarchy();
+  const existente = Object.keys(hierarquia).find(p => p.toLowerCase() === nome.toLowerCase());
+  let catPai = existente;
+  if (!existente) {
+    if (!confirm(`A categoria "${nome}" ainda não existe. Criar essa categoria junto com a bolha?\n\n(Ela só vai aparecer no site quando algum produto for cadastrado nela.)`)) return;
+    if (nomeCategoriaJaExiste(nome)) { showToast(`⚠️ Já existe uma categoria/subcategoria chamada "${nome}".`, 'error'); return; }
+    showLoading('Criando categoria...');
+    let row = { nome_original: nome, nome_exibicao: nome, visivel: true, tipo: 'pai', pai_ref: null };
+    if (!catPaiRefSupported) row = semPaiRef(row);
+    const res = await db.upsert('categorias', [row], 'nome_original');
+    hideLoading();
+    if (!res) { showToast('❌ Erro ao criar categoria. Verifique o console.', 'error'); return; }
+    categoriasRegistry.push({ nome_original: nome, nome_exibicao: nome, visivel: true, tipo: 'pai', pai_ref: null });
+    categoryNames[nome] = nome;
+    catPai = nome;
+  }
+  const cfgKey = 'cat_img_' + catPai.replace(/[^a-zA-Z0-9]/g,'_');
+  showLoading('Salvando bolha...');
+  await db.setConfigs({ [cfgKey]: url });
+  hideLoading();
+  catCustomImages[cfgKey] = url;
+  toggleAddBolhaForm(false);
+  renderCatTree();
+  renderCatImagesList();
+  showToast('✅ Bolha criada!', 'success');
+}
+
 function renderCatTree() {
-  const hierarquia = {};
-  allProducts.forEach(p => {
-    if(!p.catPai) return;
-    if(!hierarquia[p.catPai]) hierarquia[p.catPai] = new Set();
-    if(p.catFilho) hierarquia[p.catPai].add(p.catFilho);
-  });
+  const hierarquia = buildCategoriaHierarchy();
   const tree = document.getElementById('catTree');
   if(!Object.keys(hierarquia).length){ tree.innerHTML='<p style="color:var(--gray-400);text-align:center;padding:20px">Carregue o CSV primeiro.</p>'; return; }
-  tree.innerHTML = Object.entries(hierarquia).map(([pai,filhos])=>`
+  tree.innerHTML = Object.entries(hierarquia).map(([pai,filhos])=>{
+    const paiTemProdutos = countProdutosCatPai(pai) > 0;
+    const filhosHtml = [...filhos].map(f=>{
+      const filhoTemProdutos = countProdutosCatFilho(pai, f) > 0;
+      return `
+        <div class="cat-filho-item">
+          <span class="cat-filho-nome">↳ ${f}${filhoTemProdutos?'':' <span style="font-size:10px;color:var(--gray-400)">(sem produtos ainda)</span>'}</span>
+          <input class="cat-filho-rename" type="text" value="${categoryNames[f]||f}" placeholder="Renomear" data-orig="${f}" oninput="categoryNames[this.dataset.orig]=this.value">
+          <button class="cat-del-btn" title="Excluir subcategoria" onclick="deleteCatFilho('${escJs(pai)}','${escJs(f)}')">🗑️</button>
+        </div>`;
+    }).join('');
+    const addFilhoHtml = _addFilhoOpenFor === pai ? `
+        <div class="cat-filho-item" style="background:var(--gray-50)">
+          <input type="text" id="novaFilhoNome" placeholder="Nome da subcategoria" style="flex:1;padding:6px 10px;border:1px solid var(--gray-200);border-radius:6px;font-size:12px;font-family:var(--font-body)" onkeydown="if(event.key==='Enter')confirmAddCatFilho('${escJs(pai)}')">
+          <button class="btn-outline" style="padding:5px 10px;font-size:12px" onclick="confirmAddCatFilho('${escJs(pai)}')">✓</button>
+          <button class="btn-outline" style="padding:5px 10px;font-size:12px" onclick="toggleAddCatFilhoForm(null)">✕</button>
+        </div>` : `
+        <div class="cat-filho-item" style="border-bottom:none;padding-top:9px">
+          <button class="btn-add-sub" onclick="toggleAddCatFilhoForm('${escJs(pai)}')">＋ Adicionar subcategoria</button>
+        </div>`;
+    return `
     <div class="cat-pai-item">
       <div class="cat-pai-header">
-        <input type="checkbox" ${hiddenCats.has(pai)?'':'checked'} onchange="toggleCat('${pai}',this.checked)">
-        <span class="cat-pai-nome">📁 ${pai}</span>
+        <input type="checkbox" ${hiddenCats.has(pai)?'':'checked'} onchange="toggleCat('${escJs(pai)}',this.checked)">
+        <span class="cat-pai-nome">📁 ${pai}${paiTemProdutos?'':' <span style="font-weight:400;font-size:10px;color:var(--gray-400)">(sem produtos ainda)</span>'}</span>
         <input class="cat-pai-rename" type="text" value="${categoryNames[pai]||pai}" placeholder="Renomear" data-orig="${pai}" oninput="categoryNames[this.dataset.orig]=this.value">
+        <button class="cat-del-btn" title="Excluir categoria" onclick="deleteCatPai('${escJs(pai)}')">🗑️</button>
       </div>
-      ${[...filhos].map(f=>`
-        <div class="cat-filho-item">
-          <span class="cat-filho-nome">↳ ${f}</span>
-          <input class="cat-filho-rename" type="text" value="${categoryNames[f]||f}" placeholder="Renomear" data-orig="${f}" oninput="categoryNames[this.dataset.orig]=this.value">
-        </div>`).join('')}
-    </div>`).join('');
+      ${filhosHtml}
+      ${addFilhoHtml}
+    </div>`;
+  }).join('');
 }
 
 function toggleCat(pai, visible) { if(visible) hiddenCats.delete(pai); else hiddenCats.add(pai); }
+
+async function deleteCatFilho(pai, filho) {
+  const n = countProdutosCatFilho(pai, filho);
+  if (n > 0) { showToast(`⚠️ ${n} produto(s) usam "${filho}". Mova-os para outra subcategoria antes de excluir.`, 'error'); return; }
+  if (!confirm(`Excluir a subcategoria "${filho}" permanentemente?`)) return;
+  showLoading('Excluindo subcategoria...');
+  const ok = await db.delete('categorias', 'nome_original=eq.' + encodeURIComponent(filho));
+  hideLoading();
+  if (!ok) { showToast('❌ Erro ao excluir. Verifique o console.', 'error'); return; }
+  categoriasRegistry = categoriasRegistry.filter(c => c.nome_original !== filho);
+  delete categoryNames[filho];
+  renderCatTree();
+  showToast('🗑️ Subcategoria excluída!', 'success');
+}
+
+async function deleteCatPai(pai) {
+  const n = countProdutosCatPai(pai);
+  if (n > 0) { showToast(`⚠️ ${n} produto(s) usam a categoria "${pai}". Mova-os antes de excluir.`, 'error'); return; }
+  if (!confirm(`Excluir a categoria "${pai}" e todas as suas subcategorias permanentemente?`)) return;
+  showLoading('Excluindo categoria...');
+  const ok1 = await db.delete('categorias', 'nome_original=eq.' + encodeURIComponent(pai));
+  const ok2 = catPaiRefSupported ? await db.delete('categorias', 'pai_ref=eq.' + encodeURIComponent(pai)) : true;
+  hideLoading();
+  if (!ok1 && !ok2) { showToast('❌ Erro ao excluir. Verifique o console.', 'error'); return; }
+  categoriasRegistry = categoriasRegistry.filter(c => c.nome_original !== pai && c.pai_ref !== pai);
+  delete categoryNames[pai];
+  hiddenCats.delete(pai);
+  renderCatTree();
+  renderCatImagesList();
+  showToast('🗑️ Categoria excluída!', 'success');
+}
+
+function toggleAddCatPaiForm(show) {
+  const form = document.getElementById('addCatPaiForm');
+  const willShow = show === undefined ? form.style.display === 'none' : show;
+  form.style.display = willShow ? 'flex' : 'none';
+  if (willShow) document.getElementById('novaCatPaiNome').value = '';
+}
+
+async function confirmAddCatPai() {
+  const nome = document.getElementById('novaCatPaiNome').value.trim();
+  if (!nome) { showToast('⚠️ Informe o nome da categoria.', 'error'); return; }
+  if (nomeCategoriaJaExiste(nome)) { showToast(`⚠️ Já existe uma categoria/subcategoria chamada "${nome}".`, 'error'); return; }
+  showLoading('Criando categoria...');
+  let row = { nome_original: nome, nome_exibicao: nome, visivel: true, tipo: 'pai', pai_ref: null };
+  if (!catPaiRefSupported) row = semPaiRef(row);
+  const res = await db.upsert('categorias', [row], 'nome_original');
+  hideLoading();
+  if (!res) { showToast('❌ Erro ao criar categoria. Verifique o console.', 'error'); return; }
+  categoriasRegistry.push({ nome_original: nome, nome_exibicao: nome, visivel: true, tipo: 'pai', pai_ref: null });
+  categoryNames[nome] = nome;
+  toggleAddCatPaiForm(false);
+  renderCatTree();
+  renderCatImagesList();
+  showToast('✅ Categoria criada!', 'success');
+}
+
+function toggleAddCatFilhoForm(pai) {
+  if (pai && !catPaiRefSupported) { showToast('⚠️ Recurso indisponível: peça para rodar a migração do banco (coluna pai_ref) antes de adicionar subcategorias vazias.', 'error'); return; }
+  _addFilhoOpenFor = pai;
+  renderCatTree();
+  if (pai) setTimeout(() => { const el = document.getElementById('novaFilhoNome'); if (el) el.focus(); }, 0);
+}
+
+async function confirmAddCatFilho(pai) {
+  if (!catPaiRefSupported) { showToast('⚠️ Recurso indisponível: peça para rodar a migração do banco (coluna pai_ref) antes de adicionar subcategorias vazias.', 'error'); return; }
+  const input = document.getElementById('novaFilhoNome');
+  const nome = input ? input.value.trim() : '';
+  if (!nome) { showToast('⚠️ Informe o nome da subcategoria.', 'error'); return; }
+  if (nomeCategoriaJaExiste(nome)) { showToast(`⚠️ Já existe uma categoria/subcategoria chamada "${nome}".`, 'error'); return; }
+  showLoading('Criando subcategoria...');
+  const res = await db.upsert('categorias', [{ nome_original: nome, nome_exibicao: nome, visivel: true, tipo: 'filho', pai_ref: pai }], 'nome_original');
+  hideLoading();
+  if (!res) { showToast('❌ Erro ao criar subcategoria. Verifique o console.', 'error'); return; }
+  categoriasRegistry.push({ nome_original: nome, nome_exibicao: nome, visivel: true, tipo: 'filho', pai_ref: pai });
+  categoryNames[nome] = nome;
+  _addFilhoOpenFor = null;
+  renderCatTree();
+  showToast('✅ Subcategoria criada!', 'success');
+}
 async function saveCats() {
   showLoading('Salvando categorias...');
-  // Salva nomes e visibilidade
-  const hierarquia = {};
-  allProducts.forEach(p => {
-    if(!p.catPai) return;
-    if(!hierarquia[p.catPai]) hierarquia[p.catPai] = new Set();
-    if(p.catFilho) hierarquia[p.catPai].add(p.catFilho);
-  });
-  const rows = [];
+  // Salva nomes e visibilidade (inclui categorias/subcategorias sem produto, já cadastradas via os botões "+ Adicionar")
+  const hierarquia = buildCategoriaHierarchy();
+  let rows = [];
   Object.entries(hierarquia).forEach(([pai, filhos]) => {
-    rows.push({ nome_original: pai, nome_exibicao: categoryNames[pai]||pai, visivel: !hiddenCats.has(pai), tipo: 'pai' });
-    [...filhos].forEach(f => rows.push({ nome_original: f, nome_exibicao: categoryNames[f]||f, visivel: true, tipo: 'filho' }));
+    rows.push({ nome_original: pai, nome_exibicao: categoryNames[pai]||pai, visivel: !hiddenCats.has(pai), tipo: 'pai', pai_ref: null });
+    [...filhos].forEach(f => rows.push({ nome_original: f, nome_exibicao: categoryNames[f]||f, visivel: true, tipo: 'filho', pai_ref: pai }));
   });
-  await db.upsert('categorias', rows, 'nome_original');
+  if (!catPaiRefSupported) rows = rows.map(semPaiRef);
+  const res = await db.upsert('categorias', rows, 'nome_original');
   hideLoading();
+  if (!res) { showToast('❌ Erro ao salvar categorias. Verifique o console.', 'error'); return; }
+  categoriasRegistry = rows;
   showToast('✅ Categorias salvas!', 'success');
 }
 
@@ -2711,6 +2894,7 @@ async function loadConfig() {
     }
 
     // Categorias
+    await checkCatPaiRefSupport();
     const cats = await db.get('categorias', 'select=*');
     if(cats && cats.length) {
       categoriasRegistry = cats;
