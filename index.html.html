@@ -2686,10 +2686,20 @@ function getCatPorNome(nome, url=''){
 
 /* ══ CACHE ══ */
 const _CACHE_KEY='paz_prod_cache_v3'; // v3: cache armazena rows brutos do banco, não processados
-const _CACHE_TTL=30*60*1000; // 30 min
+const _CACHE_TTL=5*60*1000; // 5 min
+const _CACHE_BUST_KEY='paz_cache_bust_ts'; // marca do último "Limpar Cache" aplicado do admin
 function _saveCache(prods){try{localStorage.setItem(_CACHE_KEY,JSON.stringify({ts:Date.now(),products:prods}));}catch(e){}}
 function _loadCache(){try{const c=JSON.parse(localStorage.getItem(_CACHE_KEY)||'null');if(c&&c.products&&c.products.length&&(Date.now()-c.ts)<_CACHE_TTL)return c.products;}catch(e){}return null;}
 function _clearCache(){try{localStorage.removeItem(_CACHE_KEY);}catch(e){}}
+// Se o admin clicou "Limpar Cache", cfg.cache_bust_ts vem mais novo que o já visto neste navegador — invalida na hora, para todo mundo, sem esperar o TTL
+function _applyRemoteCacheBust(cfg){
+  try{
+    const remoteTs=parseInt((cfg&&cfg.cache_bust_ts)||'0',10);
+    if(!remoteTs)return;
+    const seenTs=parseInt(localStorage.getItem(_CACHE_BUST_KEY)||'0',10);
+    if(remoteTs>seenTs){_clearCache();localStorage.setItem(_CACHE_BUST_KEY,String(remoteTs));}
+  }catch(e){}
+}
 async function forceRefreshProducts(){
   _clearCache();
   showToast('🔄 Atualizando produtos do banco...','info');
@@ -2707,7 +2717,7 @@ async function loadFromSupabase(){
   }, 8000);
 
   try{
-    const cfg=await supa.getConfig();applyConfig(cfg);
+    const cfg=await supa.getConfig();applyConfig(cfg);_applyRemoteCacheBust(cfg);
 
     // Converte row bruto do banco → objeto do catálogo (normalização aplicada aqui)
     function _mapProd(p){
@@ -2722,7 +2732,7 @@ async function loadFromSupabase(){
       };
     }
 
-    // Tenta usar cache (até 30 min) — cache guarda rows brutos do banco
+    // Tenta usar cache (até 5 min) — cache guarda rows brutos do banco
     const rawCached=_loadCache();
     if(rawCached){
       allProducts=rawCached.map(_mapProd).filter(p=>p.preco>0);
@@ -2730,7 +2740,7 @@ async function loadFromSupabase(){
       let allProds=[],from=0;const pS=1000;
       while(true){
         const to=from+pS-1;
-        const b=await fetch(`${SUPA_URL}/rest/v1/produtos?select=*&status=eq.Ativo&order=nome.asc`,{headers:{...SH,'Range':`${from}-${to}`,'Prefer':'count=none'}});
+        const b=await fetch(`${SUPA_URL}/rest/v1/produtos?select=id,cod,nome,preco,grupo,fornecedor,cat_pai,cat_filho,descricao,fotos,dimensoes,status&status=eq.Ativo&order=nome.asc`,{headers:{...SH,'Range':`${from}-${to}`,'Prefer':'count=none'}});
         if(!b.ok)break;
         const d=await b.json();
         if(!d||!d.length)break;
@@ -3643,7 +3653,7 @@ function perfilFotoChange(e){
 }
 
 /* ══ WHATSAPP ══ */
-function zapProduct(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const refLine=p.ref?`\nRef: ${p.ref}`:'';const msg=encodeURIComponent(`Olá! Tenho interesse no produto:\n\n*${p.nome}*${refLine}\nPreço: ${formatPrice(p.preco)}\n\nPoderia me dar mais informações?`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
+function zapProduct(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const msg=encodeURIComponent(`Olá! Tenho interesse no produto:\n\n*${p.nome}*\nPreço: ${formatPrice(p.preco)}\n\nPoderia me dar mais informações?`);window.open(`https://wa.me/${WHATSAPP}?text=${msg}`,'_blank');}
 function checkoutWhatsApp(){
   if(!cart.length)return;
   const _u=JSON.parse(localStorage.getItem('paz_user')||'null');

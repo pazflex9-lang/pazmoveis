@@ -417,6 +417,7 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
       <span style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;letter-spacing:0.5px">Painel Administrativo</span>
     </div>
     <div class="header-spacer"></div>
+    <button class="btn-ver-site" onclick="limparCacheGlobal()" title="Força todos os visitantes a buscarem os dados mais recentes do banco, ignorando o cache local deles" style="cursor:pointer">🔄 Limpar Cache</button>
     <a class="btn-ver-site" href="https://paz-moveis-site.vercel.app" target="_blank">👁 Ver Site</a>
     <button class="btn-logout" onclick="doLogout()">Sair</button>
   </header>
@@ -1180,6 +1181,18 @@ const db = {
   async getConfig() { const rows=await this.get('configuracoes','select=chave,valor'); const cfg={}; rows.forEach(r=>cfg[r.chave]=r.valor); return cfg; },
   async setConfigs(obj) { const rows=Object.entries(obj).map(([chave,valor])=>({chave,valor:String(valor),updated_at:new Date().toISOString()})); return this.upsert('configuracoes',rows,'chave'); },
 };
+
+// Grava um novo cache_bust_ts em `configuracoes`: todo visitante que carregar o site depois
+// disso compara essa marca com a que já viu e, se for mais nova, descarta o cache local na hora.
+async function limparCacheGlobal(){
+  try{
+    await db.setConfigs({cache_bust_ts: Date.now()});
+    showToast('✅ Cache limpo! Os visitantes verão os dados atualizados no próximo carregamento.', 'success');
+  }catch(e){
+    console.error('limparCacheGlobal:', e);
+    showToast('❌ Erro ao limpar cache.', 'error');
+  }
+}
 
 // ── LOGIN ──────────────────────────────────────────────
 function doLogin() {

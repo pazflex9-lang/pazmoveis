@@ -7,6 +7,24 @@
     { "source": "/index.html", "destination": "/", "permanent": false }
   ],
   "headers": [
-    { "source": "/123.jpg", "headers": [{ "key": "Content-Type", "value": "image/png" }] }
+    { "source": "/123.jpg", "headers": [{ "key": "Content-Type", "value": "image/png" }] },
+    {
+      "source": "/(.*).html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    }
   ]
 }
