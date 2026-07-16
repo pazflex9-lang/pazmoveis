@@ -2660,6 +2660,13 @@ const CATEGORIAS_PRINCIPAIS = ['Eletrodomésticos','Quarto','Sala de Jantar','Co
 // Hierarquia CANÔNICA (pai/filho normalizados) — usada só pelos dropdowns de categoria (filtro de Produtos e modal de edição),
 // para não misturar variações brutas do banco. A árvore de "Visibilidade e Nomes"/"Bolhas" continua usando os nomes brutos
 // (buildCategoriaHierarchy abaixo), pois ela edita a taxonomia real salva no Supabase.
+// normalizePai() sempre colapsa nomes não reconhecidos em "Outros" (correto para produtos, que só usam
+// as 8 categorias canônicas do site). Mas para categorias PAI criadas manualmente pelo admin (ex: "Paz Flex"),
+// isso apagaria o nome digitado — a categoria "existiria" pro checador de duplicidade mas nunca apareceria
+// na árvore com seu próprio nome. Esta função só normaliza nomes reconhecidos; nomes novos mantêm o texto original.
+function resolvePaiKeyRegistro(nome) {
+  return _PAI_MAP[_normKey(nome)] || nome;
+}
 function buildCategoriaHierarchyCanonica() {
   const h = {};
   allProducts.forEach(p => {
@@ -2670,10 +2677,10 @@ function buildCategoriaHierarchyCanonica() {
   });
   categoriasRegistry.forEach(c => {
     if (c.tipo === 'pai') {
-      const pai = normalizePai(c.nome_original);
+      const pai = resolvePaiKeyRegistro(c.nome_original);
       if (!h[pai]) h[pai] = new Set();
     } else if (c.tipo === 'filho' && c.pai_ref) {
-      const pai = normalizePai(c.pai_ref);
+      const pai = resolvePaiKeyRegistro(c.pai_ref);
       if (!h[pai]) h[pai] = new Set();
       h[pai].add(c.nome_original);
     }
@@ -2805,24 +2812,27 @@ const SUBCATEGORIAS_VALIDAS_POR_PAI = {
 };
 
 // Cruza a árvore CANÔNICA (produtos + categoriasRegistry, já normalizados via normalizePai/normalizeFilho
-// em buildCategoriaHierarchyCanonica) com a estrutura real do site acima — subcategorias vindas de produtos
-// só entram se baterem com essa lista (filtra grafia divergente/lixo de fornecedor). Subcategorias criadas
-// manualmente pelo admin (registradas em `categoriasRegistry`, tipo 'filho') SEMPRE entram, mesmo fora da
-// lista fixa — do contrário elas ficam invisíveis pra sempre na árvore mas continuam "existindo" pra
-// checagem de duplicidade (nomeCategoriaJaExiste), causando erro "já existe" numa subcategoria que ninguém
+// em buildCategoriaHierarchyCanonica) com a estrutura real do site acima — categorias/subcategorias vindas
+// de produtos só entram se baterem com essa lista (filtra grafia divergente/lixo de fornecedor). Categorias
+// e subcategorias criadas manualmente pelo admin (registradas em `categoriasRegistry`) SEMPRE entram, mesmo
+// fora da lista fixa — do contrário elas ficam invisíveis pra sempre na árvore mas continuam "existindo" pra
+// checagem de duplicidade (nomeCategoriaJaExiste), causando erro "já existe" numa categoria que ninguém
 // consegue ver ou reaproveitar.
 function filtrarHierarquiaCanonica(hierarquiaBruta) {
   const h = {};
   const registradasPorPai = {};
   categoriasRegistry.forEach(c => {
     if (c.tipo === 'filho' && c.pai_ref) {
-      const pai = normalizePai(c.pai_ref);
+      const pai = resolvePaiKeyRegistro(c.pai_ref);
       (registradasPorPai[pai] || (registradasPorPai[pai] = new Set())).add(c.nome_original);
     }
   });
-  Object.keys(SUBCATEGORIAS_VALIDAS_POR_PAI).forEach(pai => {
+  // Categorias pai a exibir: as fixas do menu real do site + qualquer categoria pai registrada no banco
+  // (mesmo com nome fora do padrão, ex: criada manualmente pelo admin e ainda sem produtos)
+  const paisAExibir = new Set([...Object.keys(SUBCATEGORIAS_VALIDAS_POR_PAI), ...Object.keys(hierarquiaBruta)]);
+  paisAExibir.forEach(pai => {
     if (!hierarquiaBruta[pai]) return;
-    const validos = SUBCATEGORIAS_VALIDAS_POR_PAI[pai];
+    const validos = SUBCATEGORIAS_VALIDAS_POR_PAI[pai] || [];
     const registradas = registradasPorPai[pai] || new Set();
     h[pai] = new Set([...hierarquiaBruta[pai]].filter(f => validos.includes(f) || registradas.has(f)));
   });
