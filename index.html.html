@@ -2719,9 +2719,25 @@ async function loadFromSupabase(){
   try{
     const cfg=await supa.getConfig();applyConfig(cfg);_applyRemoteCacheBust(cfg);
 
-    // Converte row bruto do banco → objeto do catálogo (normalização aplicada aqui)
+    // Categorias PAI registradas no admin (ex: "Paz Flex"), carregadas ANTES dos produtos para que
+    // _mapProd() saiba distinguir "categoria nova criada no admin" (mantém o próprio nome) de "grafia
+    // divergente de fornecedor" (continua colapsando em "Outros", como sempre via normalizePai).
+    let categoriasPaisRegistrados=new Set();
+    try{
+      const cats=await supa.get('categorias','select=*');
+      cats.forEach(c=>{
+        categoryNames[c.nome_original]=c.nome_exibicao;
+        if(c.tipo==='pai'){if(!c.visivel)hiddenCats.add(c.nome_original);categoriasPaisRegistrados.add(c.nome_original);}
+      });
+    }catch(e2){console.warn('Categorias error:',e2);}
+
+    // Converte row bruto do banco → objeto do catálogo (normalização aplicada aqui). normalizePai() colapsa
+    // qualquer nome não reconhecido em "Outros" — correto pra lixo de grafia de fornecedor, mas apagaria uma
+    // categoria criada manualmente no admin fora das 8 canônicas. Se o cat_pai bruto bater com uma categoria
+    // registrada no banco, preserva o nome dela em vez de colapsar, pra ela aparecer no menu (buildNav).
     function _mapProd(p){
-      const paiNorm=normalizePai(p.cat_pai||'');
+      const rawPai=p.cat_pai||'';
+      const paiNorm=categoriasPaisRegistrados.has(rawPai)?rawPai:normalizePai(rawPai);
       const filhoNorm=normalizeFilho(p.cat_filho||'',paiNorm);
       return {
         cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||'',
@@ -2751,12 +2767,10 @@ async function loadFromSupabase(){
       allProducts=allProds.map(_mapProd).filter(p=>p.preco>0);
     }
     try{
-      const cats=await supa.get('categorias','select=*');
-      cats.forEach(c=>{categoryNames[c.nome_original]=c.nome_exibicao;if(c.tipo==='pai'&&!c.visivel)hiddenCats.add(c.nome_original);});
       const bans=await supa.get('banners','select=*&ativo=eq.true&order=ordem.asc');
       if(bans&&bans.length){banners=bans.map(b=>({name:b.nome,dataUrl:b.url}));renderCarousel();}
       else{const skB=document.getElementById('carouselSkeleton');if(skB)skB.classList.add('hidden');}
-    }catch(e2){console.warn('Cats/banners error:',e2);
+    }catch(e3){console.warn('Banners error:',e3);
       const skE=document.getElementById('carouselSkeleton');if(skE)skE.classList.add('hidden');}
   }catch(e){
     console.error('Erro Supabase:',e);
