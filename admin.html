@@ -1097,14 +1097,6 @@ body { font-family:var(--font-body); background:var(--gray-50); color:var(--gray
         <div class="field"><label>Categoria Principal</label>
           <select id="editCatPai" onchange="onEditCatPaiChange()">
             <option value="">Selecione...</option>
-            <option value="Eletrodomésticos">Eletrodomésticos</option>
-            <option value="Quarto">Quarto</option>
-            <option value="Sala de Jantar">Sala de Jantar</option>
-            <option value="Cozinha">Cozinha</option>
-            <option value="Sala de Estar">Sala de Estar</option>
-            <option value="Outros">Estofados</option>
-            <option value="Cama e Colchão">Cama e Colchão</option>
-            <option value="Escritório">Escritório</option>
           </select>
         </div>
         <div class="field"><label>Subcategoria</label>
@@ -1817,20 +1809,38 @@ async function reativarTodosPremoli() {
   filterProds();
 }
 
-// Seleciona o valor no #editCatPai, injetando uma opção extra se o produto tiver uma categoria fora da lista fixa
-// (evita que o select fique "sem seleção" e sobrescreva silenciosamente a categoria ao salvar)
-// O select só tem as 8 opções canônicas — normalizePai() sempre resolve qualquer valor bruto
-// (incluindo variações de grafia/caixa) para uma delas, então toda seleção sempre "gruda" em algo.
+// Popula #editCatPai com a MESMA árvore exibida em "Categorias → Visibilidade e Nomes" (categorias fixas
+// do site + qualquer categoria nova criada pelo admin, mesmo sem produto ainda). Antes o select tinha
+// só as 8 opções fixas hardcoded no HTML, então categorias criadas via "+ Adicionar categoria" nunca
+// ficavam disponíveis aqui pra serem usadas em produtos. Precisa rodar de novo toda vez que o modal abre,
+// pois uma categoria pode ter sido criada/renomeada desde a última vez.
+function populateCatPaiOptions() {
+  const sel = document.getElementById('editCatPai');
+  const hierarquia = filtrarHierarquiaCanonica(buildCategoriaHierarchyCanonica());
+  const pais = Object.keys(hierarquia).sort();
+  let html = '<option value="">Selecione...</option>';
+  pais.forEach(p => { html += `<option value="${p}">${categoryNames[p] || p}</option>`; });
+  sel.innerHTML = html;
+}
+
+// Seleciona o valor no #editCatPai. resolvePaiKeyRegistro() (não normalizePai()) porque o select agora
+// inclui categorias customizadas fora das 8 canônicas — normalizePai() colapsaria essas em "Outros".
+// Se mesmo assim não bater com nenhuma opção (lixo de fornecedor, grafia não mapeada e sem categoria
+// registrada correspondente), cai pra normalizePai() como fallback — nunca deixa o select "sem seleção",
+// o que sobrescreveria a categoria do produto silenciosamente ao salvar.
 function setCatPaiSelect(pai) {
   const sel = document.getElementById('editCatPai');
-  sel.value = pai ? normalizePai(pai) : '';
+  if (!pai) { sel.value = ''; return; }
+  const chave = resolvePaiKeyRegistro(pai);
+  sel.value = chave;
+  if (sel.value !== chave) sel.value = normalizePai(pai);
 }
 
 // Popula #editCatFilho com as subcategorias canônicas já existentes para a categoria `pai`
 // (produtos + categorias cadastradas no admin), normalizando variações brutas do banco
 function populateCatFilhoOptions(pai, selectedFilho) {
   const sel = document.getElementById('editCatFilho');
-  const paiCanon = pai ? normalizePai(pai) : '';
+  const paiCanon = pai ? resolvePaiKeyRegistro(pai) : '';
   const hierarquia = buildCategoriaHierarchyCanonica();
   const filhos = (paiCanon && hierarquia[paiCanon]) ? [...hierarquia[paiCanon]].sort() : [];
   let html = '<option value="">Selecione...</option>';
@@ -1850,6 +1860,7 @@ function editProd(idx) {
   document.getElementById('editNome').value = p.nome || '';
   document.getElementById('editRef').value = p.ref || '';
   document.getElementById('editGrupo').value = p.grupo || '';
+  populateCatPaiOptions();
   setCatPaiSelect(p.catPai || '');
   populateCatFilhoOptions(p.catPai || '', p.catFilho || '');
   document.getElementById('editPreco').value = p.preco || 0;
@@ -1869,6 +1880,7 @@ function newProd() {
   document.getElementById('editNome').value = '';
   document.getElementById('editRef').value = '';
   document.getElementById('editGrupo').value = '';
+  populateCatPaiOptions();
   setCatPaiSelect('');
   populateCatFilhoOptions('', '');
   document.getElementById('editPreco').value = '';
