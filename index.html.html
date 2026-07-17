@@ -312,13 +312,17 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 .nav-sub-item:hover{background:var(--gray-50);color:var(--red);padding-left:24px}
 .nav-sub-item:last-child{border-bottom:none}
 
-/* Ofertão do dia – botão especial azul */
+/* Ofertão do dia – botão especial azul. position:sticky + right:0 o mantém sempre inteiro na borda
+   direita visível de .nav-inner (que rola na horizontal) — sem isso, quando a lista de categorias cresce
+   (ex: categoria nova criada no admin) o botão, por ser o último item da fileira, ficava cortado pela
+   metade fora da área visível em vez de rolar junto ou ficar totalmente à mostra. */
 .nav-link-ofertao{
   display:flex;align-items:center;
   background:var(--blue-dark);color:#fff!important;
   padding:8px 16px;border-radius:50px;font-size:13px;font-weight:800;
   cursor:pointer;white-space:nowrap;margin:auto 0 auto 8px;flex-shrink:0;
   transition:background .2s;border:none;font-family:var(--font);
+  position:sticky;right:0;z-index:2;
 }
 .nav-link-ofertao:hover{background:#083B8A}
 
