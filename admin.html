@@ -1571,12 +1571,17 @@ async function exportUsuariosCSV() {
 }
 
 function populateCatFilter() {
-  // Mostra só as categorias canônicas do site, igual ao menu — a mesma normalização
-  // (normalizePai) une variações brutas do banco ("Sala DE Estar", "Sala De Estar"...) numa só opção.
+  // Mesma árvore exibida em "Categorias → Visibilidade e Nomes": as categorias fixas do site + qualquer
+  // categoria nova criada pelo admin (ex: "Paz Flex") — antes só tinha as 8 opções fixas hardcoded, então
+  // não dava pra filtrar a lista de Produtos por uma categoria criada depois.
   const sel = document.getElementById('prodCatFilter');
-  sel.innerHTML = '<option value="">Todas as categorias</option>' + CATEGORIAS_PRINCIPAIS.map(v =>
-    `<option value="${v}">${v === 'Outros' ? 'Estofados' : v}</option>`
+  const atual = sel.value;
+  const hierarquia = filtrarHierarquiaCanonica(buildCategoriaHierarchyCanonica());
+  const pais = Object.keys(hierarquia).sort();
+  sel.innerHTML = '<option value="">Todas as categorias</option>' + pais.map(p =>
+    `<option value="${p}">${categoryNames[p] || p}</option>`
   ).join('');
+  sel.value = atual;
 }
 
 function filterProds() {
@@ -1586,7 +1591,7 @@ function filterProds() {
   const st  = document.getElementById('prodStatusFilter').value;
   filteredProducts = allProducts.filter(p => {
     if (s && !(p.nome||'').toLowerCase().includes(s) && !(p.ref||'').toLowerCase().includes(s)) return false;
-    if (c && normalizePai(p.catPai) !== c) return false;
+    if (c && resolvePaiProduto(p.catPai) !== c) return false;
     if (forn && (p.grupo||'').toLowerCase() !== forn) return false;
     if (st === 'sem_foto') return !p.fotos || p.fotos.trim() === '';
     if (st && st !== 'sem_foto' && p.status !== st) return false;
@@ -2594,8 +2599,8 @@ function semPaiRef(row) { const { pai_ref, ...resto } = row; return resto; }
 function escJs(s) { return String(s).replace(/'/g, "\\'"); }
 // Contam por categoria/subcategoria CANÔNICA (normalizada) — um produto com cat_pai="Sala De Estar" ou
 // "sala de estar" conta igual a um com "Sala de Estar", pois todos normalizam para o mesmo valor.
-function countProdutosCatPai(pai) { return allProducts.filter(p => normalizePai(p.catPai) === pai).length; }
-function countProdutosCatFilho(pai, filho) { return allProducts.filter(p => normalizePai(p.catPai) === pai && normalizeFilho(p.catFilho, pai) === filho).length; }
+function countProdutosCatPai(pai) { return allProducts.filter(p => resolvePaiProduto(p.catPai) === pai).length; }
+function countProdutosCatFilho(pai, filho) { return allProducts.filter(p => resolvePaiProduto(p.catPai) === pai && normalizeFilho(p.catFilho, pai) === filho).length; }
 function nomeCategoriaJaExiste(nome) {
   const n = nome.toLowerCase();
   return categoriasRegistry.some(c => c.nome_original.toLowerCase() === n)
@@ -2666,9 +2671,6 @@ function normalizeFilho(rawFilho,paiCanon){
   return _FILHO_MAP[k]||_toTitleCase(rawFilho);
 }
 
-// Valores aceitos pelo select #editCatPai (value = o que é salvo em cat_pai; "Outros" exibe como "Estofados")
-const CATEGORIAS_PRINCIPAIS = ['Eletrodomésticos','Quarto','Sala de Jantar','Cozinha','Sala de Estar','Outros','Cama e Colchão','Escritório'];
-
 // Hierarquia CANÔNICA (pai/filho normalizados) — usada só pelos dropdowns de categoria (filtro de Produtos e modal de edição),
 // para não misturar variações brutas do banco. A árvore de "Visibilidade e Nomes"/"Bolhas" continua usando os nomes brutos
 // (buildCategoriaHierarchy abaixo), pois ela edita a taxonomia real salva no Supabase.
@@ -2679,10 +2681,19 @@ const CATEGORIAS_PRINCIPAIS = ['Eletrodomésticos','Quarto','Sala de Jantar','Co
 function resolvePaiKeyRegistro(nome) {
   return _PAI_MAP[_normKey(nome)] || nome;
 }
+// Resolve a categoria PAI "efetiva" de um PRODUTO (cat_pai bruto do banco): se bater com uma categoria
+// PAI de fato registrada em `categoriasRegistry` (ex: "Paz Flex", criada via "+ Adicionar categoria"),
+// preserva o nome dela — senão cai em normalizePai() como sempre, colapsando grafia divergente/lixo de
+// fornecedor em "Outros". Ao contrário de resolvePaiKeyRegistro(), aqui só entram nomes REGISTRADOS: um
+// produto não pode "inventar" uma categoria nova só por ter um cat_pai bruto estranho.
+function resolvePaiProduto(rawPai) {
+  const registrado = categoriasRegistry.some(c => c.tipo === 'pai' && c.nome_original === rawPai);
+  return registrado ? rawPai : normalizePai(rawPai);
+}
 function buildCategoriaHierarchyCanonica() {
   const h = {};
   allProducts.forEach(p => {
-    const pai = normalizePai(p.catPai);
+    const pai = resolvePaiProduto(p.catPai);
     if (!h[pai]) h[pai] = new Set();
     const filho = normalizeFilho(p.catFilho, pai);
     if (filho) h[pai].add(filho);
@@ -2908,7 +2919,7 @@ async function updateProdutosEmLote(cods, dados) {
 }
 
 async function deleteCatFilho(pai, filho) {
-  const produtosAfetados = allProducts.filter(p => normalizePai(p.catPai) === pai && normalizeFilho(p.catFilho, pai) === filho);
+  const produtosAfetados = allProducts.filter(p => resolvePaiProduto(p.catPai) === pai && normalizeFilho(p.catFilho, pai) === filho);
   const n = produtosAfetados.length;
   const msg = n > 0
     ? `Esta subcategoria tem ${n} produto(s) vinculado(s). Ao excluir, esses produtos ficarão sem subcategoria. Deseja continuar?`
@@ -2931,7 +2942,7 @@ async function deleteCatFilho(pai, filho) {
 }
 
 async function deleteCatPai(pai) {
-  const produtosAfetados = allProducts.filter(p => normalizePai(p.catPai) === pai);
+  const produtosAfetados = allProducts.filter(p => resolvePaiProduto(p.catPai) === pai);
   const n = produtosAfetados.length;
   const msg = n > 0
     ? `Esta categoria tem ${n} produto(s). Ao excluir, ficarão sem categoria. Deseja continuar?`
