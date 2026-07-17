@@ -2765,6 +2765,7 @@ async function loadFromSupabase(){
   clearTimeout(timeout);
   document.getElementById('supaLoading').style.display='none';
   initCatalog();
+  _tryOpenProductFromURL();
 }
 
 function renderBannersIntermediarios(cfg){
@@ -3350,6 +3351,27 @@ function goPage(n){currentPage=n;renderPage();}
 
 /* ══ PÁGINA PRODUTO ══ */
 let currentProduct=null;
+// Extrai o código do produto de um link direto/compartilhável em qualquer um dos formatos suportados:
+// hash "#produto/COD" (formato gerado por shareProduct) ou "#produto-COD", query string "?produto=COD",
+// ou path "/produto/COD" (precisa do rewrite em vercel.json, que serve index.html.html preservando a URL).
+function _getProductCodFromURL(){
+  const hm=window.location.hash.match(/^#produto[\/-](.+)$/);
+  if(hm)return decodeURIComponent(hm[1]);
+  const qs=new URLSearchParams(window.location.search);
+  if(qs.has('produto'))return qs.get('produto');
+  const pm=window.location.pathname.match(/^\/produto\/([^/]+)/);
+  if(pm)return decodeURIComponent(pm[1]);
+  return null;
+}
+// Chamada só depois que allProducts está populado (fim de loadFromSupabase) — o evento 'hashchange' não
+// dispara para o hash/query/path já presente na URL no carregamento inicial da página, só em mudanças
+// posteriores, então sem isso um link direto de produto sempre abria a home.
+function _tryOpenProductFromURL(){
+  const cod=_getProductCodFromURL();
+  if(!cod)return;
+  const p=allProducts.find(x=>x.cod===cod);
+  if(p){currentProduct=p;showProdutoPage(p);}
+}
 function openProduct(cod){
   const p=allProducts.find(x=>x.cod===cod);if(!p)return;
   currentProduct=p;window.location.hash='produto/'+encodeURIComponent(cod);showProdutoPage(p);
@@ -3399,7 +3421,13 @@ function ppSelectImg(src,el){
   mi.style.transition='none';mi.src=src;
   document.querySelectorAll('.pp-thumb').forEach(t=>t.classList.remove('active'));el.classList.add('active');
 }
-function closeProdutoPage(){document.getElementById('produtoPage').classList.remove('show');document.body.style.overflow='';history.pushState('',document.title,window.location.pathname+window.location.search);_resetSEO();}
+function closeProdutoPage(){
+  document.getElementById('produtoPage').classList.remove('show');document.body.style.overflow='';
+  const qs=new URLSearchParams(window.location.search);qs.delete('produto');
+  const newSearch=qs.toString();
+  history.pushState('',document.title,window.location.pathname+(newSearch?'?'+newSearch:''));
+  _resetSEO();
+}
 
 /* ══ ZOOM GALERIA ══ */
 (function initPpZoom(){
@@ -3461,7 +3489,7 @@ function shareProduct(){
       });
   }
 }
-window.addEventListener('hashchange',()=>{const h=window.location.hash;if(h.startsWith('#produto/')){const cod=decodeURIComponent(h.replace('#produto/',''));const p=allProducts.find(x=>x.cod===cod);if(p)showProdutoPage(p);}else closeProdutoPage();});
+window.addEventListener('hashchange',()=>{const cod=_getProductCodFromURL();if(cod){const p=allProducts.find(x=>x.cod===cod);if(p){currentProduct=p;showProdutoPage(p);}}else closeProdutoPage();});
 
 /* ══ CARRINHO ══ */
 function addToCart(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const ex=cart.find(c=>c.cod===cod);if(ex)ex.qty++;else cart.push({...p,qty:1});renderCart();showToast(`✅ "${p.nome.slice(0,30)}..." adicionado!`);}

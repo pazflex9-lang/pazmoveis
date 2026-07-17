@@ -1,7 +1,8 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/index.html.html" },
-    { "source": "/admin", "destination": "/admin.html" }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/produto/:cod", "destination": "/index.html.html" }
   ],
   "redirects": [
     { "source": "/index.html", "destination": "/", "permanent": false }
