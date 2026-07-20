@@ -2521,7 +2521,8 @@ const supa={
 
 /* ══ ESTADO ══ */
 let allProducts=[],filteredProds=[],currentCat='',currentSubCat='',currentPage=1;
-const PER_PAGE=24;
+const PER_PAGE=50; // tamanho do bloco renderizado por vez no scroll infinito
+let renderedCount=0,_loadingMoreProds=false;
 let WHATSAPP='5571999999999',cart=[],favorites=JSON.parse(localStorage.getItem('paz_favs')||'[]'),hiddenCats=new Set(),categoryNames={'Outros':'Estofados'},banners=[];
 let currentAmbienteCat='';
 
@@ -2689,8 +2690,8 @@ function getCatPorNome(nome, url=''){
 }
 
 /* ══ CACHE ══ */
-const _CACHE_KEY='paz_prod_cache_v3'; // v3: cache armazena rows brutos do banco, não processados
-const _CACHE_TTL=5*60*1000; // 5 min
+const _CACHE_KEY='paz_prod_cache_v4'; // v4: select enxuto (sem descricao/dimensoes/grupo/fornecedor) — reduz egress do Supabase
+const _CACHE_TTL=30*60*1000; // 30 min
 const _CACHE_BUST_KEY='paz_cache_bust_ts'; // marca do último "Limpar Cache" aplicado do admin
 function _saveCache(prods){try{localStorage.setItem(_CACHE_KEY,JSON.stringify({ts:Date.now(),products:prods}));}catch(e){}}
 function _loadCache(){try{const c=JSON.parse(localStorage.getItem(_CACHE_KEY)||'null');if(c&&c.products&&c.products.length&&(Date.now()-c.ts)<_CACHE_TTL)return c.products;}catch(e){}return null;}
@@ -2739,20 +2740,24 @@ async function loadFromSupabase(){
     // qualquer nome não reconhecido em "Outros" — correto pra lixo de grafia de fornecedor, mas apagaria uma
     // categoria criada manualmente no admin fora das 8 canônicas. Se o cat_pai bruto bater com uma categoria
     // registrada no banco, preserva o nome dela em vez de colapsar, pra ela aparecer no menu (buildNav).
+    // Select enxuto — só os campos usados na listagem/card. descricao, dimensoes e referencia
+    // (pesados e usados só na página de produto individual) são buscados sob demanda em
+    // _ensureProductDetails(), quando o cliente realmente abre um produto.
     function _mapProd(p){
       const rawPai=p.cat_pai||'';
       const paiNorm=categoriasPaisRegistrados.has(rawPai)?rawPai:normalizePai(rawPai);
       const filhoNorm=normalizeFilho(p.cat_filho||'',paiNorm);
       return {
-        cod:p.cod||String(p.id),nome:p.nome||'',ref:p.referencia||'',
-        preco:parseFloat(p.preco)||0,grupo:p.grupo||p.fornecedor||'',
+        cod:p.cod||String(p.id),nome:p.nome||'',ref:'',
+        preco:parseFloat(p.preco)||0,grupo:'',
         catPai:paiNorm,catFilho:filhoNorm,
-        categoria:paiNorm,descricao:p.descricao||'',
-        fotos:p.fotos||'',dimensoes:p.dimensoes||'',status:p.status||'Ativo',
+        categoria:paiNorm,descricao:'',
+        fotos:p.fotos||'',dimensoes:'',status:p.status||'Ativo',
+        _detailsLoaded:false,
       };
     }
 
-    // Tenta usar cache (até 5 min) — cache guarda rows brutos do banco
+    // Tenta usar cache (até 30 min) — cache guarda rows brutos do banco
     const rawCached=_loadCache();
     if(rawCached){
       allProducts=rawCached.map(_mapProd).filter(p=>p.preco>0);
@@ -2760,7 +2765,7 @@ async function loadFromSupabase(){
       let allProds=[],from=0;const pS=1000;
       while(true){
         const to=from+pS-1;
-        const b=await fetch(`${SUPA_URL}/rest/v1/produtos?select=id,cod,nome,preco,grupo,fornecedor,cat_pai,cat_filho,descricao,fotos,dimensoes,status&status=eq.Ativo&order=nome.asc`,{headers:{...SH,'Range':`${from}-${to}`,'Prefer':'count=none'}});
+        const b=await fetch(`${SUPA_URL}/rest/v1/produtos?select=id,cod,nome,preco,cat_pai,cat_filho,fotos,status&status=eq.Ativo&order=nome.asc`,{headers:{...SH,'Range':`${from}-${to}`,'Prefer':'count=none'}});
         if(!b.ok)break;
         const d=await b.json();
         if(!d||!d.length)break;
@@ -3311,13 +3316,13 @@ document.getElementById('searchInput').addEventListener('keyup',e=>{if(e.key==='
 /* ══ RENDER CATÁLOGO ══ */
 let _initialRender=true;
 function renderPage(){
-  const start=(currentPage-1)*PER_PAGE,page=filteredProds.slice(start,start+PER_PAGE);
   const grid=document.getElementById('productsGrid');
   if(!filteredProds.length){
     grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--gray-400)"><div style="font-size:52px;margin-bottom:14px">🔍</div><h3 style="font-size:20px;color:var(--gray-600);margin-bottom:6px">Nenhum produto encontrado</h3><p>Tente outro termo</p></div>`;
-    document.getElementById('pagination').innerHTML='';return;
+    document.getElementById('pagination').innerHTML='';renderedCount=0;return;
   }
-  grid.innerHTML=page.map(p=>cardHTML(p)).join('');
+  renderedCount=Math.min(PER_PAGE,filteredProds.length);
+  grid.innerHTML=filteredProds.slice(0,renderedCount).map(p=>cardHTML(p)).join('');
   renderPagination();
   document.getElementById('sectionTitle').textContent=currentSubCat||currentCat||'Todos os Produtos';
   const _bc=document.getElementById('catalogBc'),_bcC=document.getElementById('bcCatLink'),_bcS=document.getElementById('bcSubLink'),_bcSp=document.getElementById('bcSubSep');
@@ -3353,19 +3358,28 @@ function cardHTML(p){
     </div>
   </div>`;
 }
+// Scroll infinito: os produtos filtrados já estão todos em memória (allProducts), então "carregar mais"
+// só renderiza o próximo bloco de PER_PAGE cards — sem requisição nova ao Supabase.
 function renderPagination(){
-  const total=Math.ceil(filteredProds.length/PER_PAGE),pag=document.getElementById('pagination');
-  if(total<=1){pag.innerHTML='';return;}
-  let html='';
-  const s=Math.max(1,currentPage-2),e=Math.min(total,currentPage+2);
-  if(currentPage>1)html+=`<button class="page-btn" onclick="goPage(${currentPage-1})">‹</button>`;
-  if(s>1)html+=`<button class="page-btn" onclick="goPage(1)">1</button>${s>2?'<span style="padding:0 4px">…</span>':''}`;
-  for(let i=s;i<=e;i++)html+=`<button class="page-btn${i===currentPage?' active':''}" onclick="goPage(${i})">${i}</button>`;
-  if(e<total)html+=`${e<total-1?'<span style="padding:0 4px">…</span>':''}<button class="page-btn" onclick="goPage(${total})">${total}</button>`;
-  if(currentPage<total)html+=`<button class="page-btn" onclick="goPage(${currentPage+1})">›</button>`;
-  pag.innerHTML=html;
+  const pag=document.getElementById('pagination');
+  if(renderedCount>=filteredProds.length){pag.innerHTML='';return;}
+  pag.innerHTML=`<div style="width:100%;text-align:center;padding:20px;color:var(--gray-400);font-size:13px">Mostrando ${renderedCount} de ${filteredProds.length} produtos — role para carregar mais</div>`;
 }
-function goPage(n){currentPage=n;renderPage();}
+function loadMoreProducts(){
+  if(_loadingMoreProds||renderedCount>=filteredProds.length)return;
+  _loadingMoreProds=true;
+  const next=filteredProds.slice(renderedCount,renderedCount+PER_PAGE);
+  document.getElementById('productsGrid').insertAdjacentHTML('beforeend',next.map(p=>cardHTML(p)).join(''));
+  renderedCount+=next.length;
+  renderPagination();
+  _loadingMoreProds=false;
+}
+window.addEventListener('scroll',()=>{
+  if(renderedCount>=filteredProds.length)return;
+  const pp=document.getElementById('produtoPage');
+  if(pp&&pp.classList.contains('show'))return;
+  if((window.innerHeight+window.scrollY)>=(document.body.offsetHeight-800))loadMoreProducts();
+},{passive:true});
 
 /* ══ PÁGINA PRODUTO ══ */
 let currentProduct=null;
@@ -3384,15 +3398,40 @@ function _getProductCodFromURL(){
 // Chamada só depois que allProducts está populado (fim de loadFromSupabase) — o evento 'hashchange' não
 // dispara para o hash/query/path já presente na URL no carregamento inicial da página, só em mudanças
 // posteriores, então sem isso um link direto de produto sempre abria a home.
+// Busca descricao/dimensoes/referencia (fora do select enxuto da listagem) só quando o cliente
+// abre um produto específico — evita puxar esses campos pesados para os ~2900 produtos do catálogo inteiro.
+async function _fetchProductDetails(cod){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/produtos?cod=eq.${encodeURIComponent(cod)}&select=descricao,dimensoes,referencia&limit=1`,{headers:SH});
+    if(!r.ok)return null;
+    const rows=await r.json();
+    return(rows&&rows[0])?rows[0]:null;
+  }catch(e){console.error('_fetchProductDetails:',e);return null;}
+}
+async function _ensureProductDetails(p){
+  if(!p||p._detailsLoaded)return p;
+  // openProduct() seta o hash, o que dispara o listener de 'hashchange' quase junto — sem esse guard,
+  // as duas chamadas concorrentes fariam fetch em duplicidade antes de _detailsLoaded ficar true.
+  if(!p._detailsPromise){
+    p._detailsPromise=_fetchProductDetails(p.cod).then(d=>{
+      if(d){p.descricao=d.descricao||'';p.dimensoes=d.dimensoes||'';p.ref=d.referencia||'';}
+      p._detailsLoaded=true;
+    });
+  }
+  await p._detailsPromise;
+  return p;
+}
 function _tryOpenProductFromURL(){
   const cod=_getProductCodFromURL();
   if(!cod)return;
   const p=allProducts.find(x=>x.cod===cod);
-  if(p){currentProduct=p;showProdutoPage(p);}
+  if(p){currentProduct=p;showProdutoPage(p);_ensureProductDetails(p).then(()=>{if(currentProduct===p)showProdutoPage(p);});}
 }
-function openProduct(cod){
+async function openProduct(cod){
   const p=allProducts.find(x=>x.cod===cod);if(!p)return;
   currentProduct=p;window.location.hash='produto/'+encodeURIComponent(cod);showProdutoPage(p);
+  await _ensureProductDetails(p);
+  if(currentProduct===p)showProdutoPage(p);
 }
 function showProdutoPage(p){
   const pix=p.preco*0.95,parc=p.preco/12;
@@ -3507,7 +3546,7 @@ function shareProduct(){
       });
   }
 }
-window.addEventListener('hashchange',()=>{const cod=_getProductCodFromURL();if(cod){const p=allProducts.find(x=>x.cod===cod);if(p){currentProduct=p;showProdutoPage(p);}}else closeProdutoPage();});
+window.addEventListener('hashchange',()=>{const cod=_getProductCodFromURL();if(cod){const p=allProducts.find(x=>x.cod===cod);if(p){currentProduct=p;showProdutoPage(p);_ensureProductDetails(p).then(()=>{if(currentProduct===p)showProdutoPage(p);});}}else closeProdutoPage();});
 
 /* ══ CARRINHO ══ */
 function addToCart(cod){const p=allProducts.find(x=>x.cod===cod);if(!p)return;const ex=cart.find(c=>c.cod===cod);if(ex)ex.qty++;else cart.push({...p,qty:1});renderCart();showToast(`✅ "${p.nome.slice(0,30)}..." adicionado!`);}
