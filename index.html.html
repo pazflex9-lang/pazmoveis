@@ -2516,6 +2516,34 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
 const SUPA_URL='https://dhsjxyuecrjsoneevxkx.supabase.co';
 const SUPA_KEY='sb_publishable_jb7bGFEqMpwp2_9WEysEkA_IfVrw9lS';
 const SH={'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Content-Type':'application/json'};
+/* ══ MINIATURA (economia de banda) ══
+   Reescreve URLs do Storage público do Supabase para a versão redimensionada/comprimida
+   (endpoint render/image, disponível no plano Pro). Serve imagens pequenas nas listagens em
+   vez do arquivo cheio, cortando o egress. URLs que não são do Storage passam sem alteração.
+   Passando só "width", o Supabase mantém a altura ORIGINAL da foto e corta as laterais até
+   caber nessa largura (crop, não escala) — em foto paisagem isso corta quase tudo. Por isso os
+   cards de produto (quadrados) passam "square=true": pede width+height iguais com
+   resize=contain, que ESCALA a foto inteira para caber no quadro, sem cortar nada. */
+function thumb(url,w,q,square){
+  if(!url||typeof url!=='string')return url||'';
+  const i=url.indexOf('/storage/v1/object/public/');
+  if(i===-1)return url;
+  const base=url.split('?')[0].replace('/storage/v1/object/public/','/storage/v1/render/image/public/');
+  const width=w||400;
+  if(square)return `${base}?width=${width}&height=${width}&resize=contain&quality=${q||70}`;
+  return `${base}?width=${width}&quality=${q||70}`;
+}
+/* Se a miniatura (render/image) falhar, tenta o arquivo original (object/public) antes de esconder.
+   Garante que nenhuma foto suma caso a transformação de imagem esteja indisponível. */
+function imgErr(el){
+  if(!el)return;
+  if(!el.dataset.fb && el.src.indexOf('/render/image/public/')>-1){
+    el.dataset.fb='1';
+    el.src=el.src.split('?')[0].replace('/render/image/public/','/object/public/');
+    return;
+  }
+  el.style.display='none';
+}
 const supa={
   async get(t,p=''){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${p}`,{headers:{...SH,'Range':'0-9999','Prefer':'count=none'}});return r.ok?r.json():[]},
   async getConfig(){const rows=await this.get('configuracoes','select=chave,valor');const cfg={};rows.forEach(r=>cfg[r.chave]=r.valor);return cfg},
@@ -2900,7 +2928,7 @@ function prodCardHTML(p,badgeLabel=''){
   const desc=Math.round((1-(p.preco/precoOld))*100);
   return `<div class="prod-card" onclick="openProduct('${p.cod}')">
     <div class="prod-card-img">
-      ${imgs.length?`<img src="${imgs[0]}" alt="${p.nome}" loading="lazy" onerror="this.style.display='none'">`:'<div class="no-img">🛋️</div>'}
+      ${imgs.length?`<img src="${thumb(imgs[0],400,70,true)}" alt="${p.nome}" loading="lazy" onerror="imgErr(this)">`:'<div class="no-img">🛋️</div>'}
       ${badgeLabel?`<div class="badge-oferta">${badgeLabel}</div>`:''}
     </div>
     <div class="prod-card-body">
@@ -3339,7 +3367,7 @@ function cardHTML(p){
   const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
   return `<div class="product-card" onclick="openProduct('${p.cod}')">
     <div class="card-img-wrap">
-      ${imgs.length?`<img src="${imgs[0]}" alt="${p.nome}" loading="lazy" onerror="this.style.display='none'">`:'<div class="img-placeholder">🛋️</div>'}
+      ${imgs.length?`<img src="${thumb(imgs[0],400,70,true)}" alt="${p.nome}" loading="lazy" onerror="imgErr(this)">`:'<div class="img-placeholder">🛋️</div>'}
       ${imgs.length>1?`<span class="img-count">+${imgs.length-1}</span>`:''}
       <button class="card-heart-btn${favorites.some(f=>f.cod===p.cod)?' active':''}" data-fav-cod="${p.cod}" onclick="event.stopPropagation();toggleFavorite('${p.cod}')" title="Favoritar">♥</button>
     </div>
