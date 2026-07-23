@@ -589,8 +589,8 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 .pp-breadcrumb a{color:var(--blue);cursor:pointer;font-weight:700}
 .pp-body{max-width:1100px;margin:0 auto;padding:28px 24px;display:flex;gap:36px;flex-wrap:wrap}
 .pp-gallery{width:440px;flex-shrink:0}
-.pp-main-img{width:100%;aspect-ratio:1;background:#fff;border-radius:var(--radius);overflow:hidden;margin-bottom:10px;border:1.5px solid var(--gray-200);cursor:zoom-in}
-.pp-main-img img{width:100%;height:100%;object-fit:contain;object-position:center;transition:transform .3s;will-change:transform}
+.pp-main-img{width:100%;min-height:280px;background:#fff;border-radius:var(--radius);overflow:hidden;margin-bottom:10px;border:1.5px solid var(--gray-200);cursor:zoom-in;display:flex;align-items:center;justify-content:center}
+.pp-main-img img{width:100%;height:auto;display:block;transition:transform .3s;will-change:transform}
 .pp-thumbs{display:flex;gap:8px;flex-wrap:wrap}
 .pp-thumb{width:76px;height:76px;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid var(--gray-200);transition:border .2s;flex-shrink:0;background:#fff}
 .pp-thumb:hover{border-color:var(--blue)}
@@ -2521,15 +2521,17 @@ const SH={'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Content-Type':
    (endpoint render/image, disponível no plano Pro). Serve imagens pequenas nas listagens em
    vez do arquivo cheio, cortando o egress. URLs que não são do Storage passam sem alteração.
    Passando só "width", o Supabase mantém a altura ORIGINAL da foto e corta as laterais até
-   caber nessa largura (crop, não escala) — em foto paisagem isso corta quase tudo. Por isso os
-   cards de produto (quadrados) passam "square=true": pede width+height iguais com
-   resize=contain, que ESCALA a foto inteira para caber no quadro, sem cortar nada. */
+   caber nessa largura (crop, não escala) — em foto paisagem isso corta quase tudo. Por isso:
+   square=true pede width+height iguais com resize=contain (quadro quadrado, ex: cards e
+   miniaturas da galeria); square='fit' pede só resize=contain sem forçar altura (escala a foto
+   toda proporcionalmente, sem cortar e sem virar quadrado — usado na imagem grande única). */
 function thumb(url,w,q,square){
   if(!url||typeof url!=='string')return url||'';
   const i=url.indexOf('/storage/v1/object/public/');
   if(i===-1)return url;
   const base=url.split('?')[0].replace('/storage/v1/object/public/','/storage/v1/render/image/public/');
   const width=w||400;
+  if(square==='fit')return `${base}?width=${width}&resize=contain&quality=${q||70}`;
   if(square)return `${base}?width=${width}&height=${width}&resize=contain&quality=${q||70}`;
   return `${base}?width=${width}&quality=${q||70}`;
 }
@@ -3484,7 +3486,7 @@ function showProdutoPage(p){
   document.getElementById('ppParcel').innerHTML='ou até 12x de <strong>'+formatPrice(parc)+'</strong> sem juros';
   document.getElementById('ppPix').innerHTML=formatPrice(pix)+' <span>NO PIX</span>';
   const mi=document.getElementById('ppMainImg'),thumbsEl=document.getElementById('ppThumbs');
-  if(imgs.length){mi.src=imgs[0];mi.alt=p.nome;thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="pp-thumb${i===0?' active':''}" onclick="ppSelectImg('${src}',this)"><img src="${src}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');}
+  if(imgs.length){mi.onerror=function(){imgErr(mi);};mi.src=thumb(imgs[0],800,70,'fit');mi.alt=p.nome;thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="pp-thumb${i===0?' active':''}" onclick="ppSelectImg('${thumb(src,800,70,'fit')}',this)"><img src="${thumb(src,150,70,true)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');}
   else{mi.src='';thumbsEl.innerHTML='<div style="font-size:44px;color:var(--gray-300)">🛋️</div>';}
   const db=document.getElementById('ppDescBox');if(p.descricao){document.getElementById('ppDesc').textContent=p.descricao;db.style.display='block';}else db.style.display='none';
   const dimsBox=document.getElementById('ppDimsBox');
