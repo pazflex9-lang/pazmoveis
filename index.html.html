@@ -839,8 +839,12 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
     gap:8px;
   }
 
-  /* 10. Menu: overlay CSS via elemento JS */
-  #navTodosOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}
+  /* 10. Menu: overlay CSS via elemento JS.
+     z-index fica ABAIXO do header (sticky, z-index:200): o header cria seu próprio
+     contexto de empilhamento, então o menu (z-index:9999) nele contido só é comparado
+     com outros filhos do header — nunca com o overlay, que é irmão no body. Se o
+     overlay tivesse z-index maior que o do header, ele cobria e bloqueava o menu inteiro. */
+  #navTodosOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150}
 }
 </style>
 </head>
