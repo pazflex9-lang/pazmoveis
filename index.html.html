@@ -2525,15 +2525,23 @@ const SH={'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Content-Type':
    square=true pede width+height iguais com resize=contain (quadro quadrado, ex: cards e
    miniaturas da galeria); square='fit' pede só resize=contain sem forçar altura (escala a foto
    toda proporcionalmente, sem cortar e sem virar quadrado — usado na imagem grande única). */
+/* USE_IMAGE_TRANSFORM=false: plano Supabase atual é FREE, o endpoint /render/image/
+   retorna 403 nesse plano. Por isso thumb() serve o arquivo original (/object/public/),
+   sem redimensionamento. Se o projeto for para o plano Pro, basta trocar para true
+   para voltar a servir miniaturas redimensionadas/comprimidas. */
+const USE_IMAGE_TRANSFORM=false;
+
 function thumb(url,w,q,square){
   if(!url||typeof url!=='string')return url||'';
   const i=url.indexOf('/storage/v1/object/public/');
   if(i===-1)return url;
-  const base=url.split('?')[0].replace('/storage/v1/object/public/','/storage/v1/render/image/public/');
+  const base=url.split('?')[0];
+  if(!USE_IMAGE_TRANSFORM)return base;
+  const renderBase=base.replace('/storage/v1/object/public/','/storage/v1/render/image/public/');
   const width=w||400;
-  if(square==='fit')return `${base}?width=${width}&resize=contain&quality=${q||70}`;
-  if(square)return `${base}?width=${width}&height=${width}&resize=contain&quality=${q||70}`;
-  return `${base}?width=${width}&quality=${q||70}`;
+  if(square==='fit')return `${renderBase}?width=${width}&resize=contain&quality=${q||70}`;
+  if(square)return `${renderBase}?width=${width}&height=${width}&resize=contain&quality=${q||70}`;
+  return `${renderBase}?width=${width}&quality=${q||70}`;
 }
 /* Se a miniatura (render/image) falhar, tenta o arquivo original (object/public) antes de esconder.
    Garante que nenhuma foto suma caso a transformação de imagem esteja indisponível. */
@@ -3070,7 +3078,7 @@ function renderAmbienteGrid(cat){
   document.getElementById('ambienteGrid').innerHTML=prods.map(p=>{
     const img=p.fotos.split('|')[0].trim();
     return `<div class="ambiente-item" onclick="openProduct('${p.cod}')">
-      <img src="${img}" alt="${p.nome}" onerror="this.style.display='none'">
+      <img src="${thumb(img,400)}" alt="${p.nome}" loading="lazy" onerror="imgErr(this)">
       <div class="ambiente-item-name">${p.catFilho||p.nome.split(' ').slice(0,2).join(' ')}</div>
     </div>`;
   }).join('');
@@ -3087,7 +3095,7 @@ function renderCatBubbles(){
     const cfgKey='cat_img_'+cat.replace(/[^a-zA-Z0-9]/g,'_');
     const imgUrl=(window._siteConfig&&window._siteConfig[cfgKey])||catFotos[cat]||'';
     return `<div class="bubble" onclick="filterByCat('${cat.replace(/'/g,"\\'")}',event)">
-      <div class="bubble-img"><img src="${imgUrl}" alt="${cat}" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f0f0f0;\\'>🛋️</div>'"></div>
+      <div class="bubble-img"><img src="${thumb(imgUrl,250)}" alt="${cat}" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f0f0f0;\\'>🛋️</div>'"></div>
       <span class="bubble-label">${categoryNames[cat]||cat}</span>
     </div>`;
   }).join('');
@@ -3252,7 +3260,7 @@ function showSearchSuggestions(q){
   if(!matches.length){el.classList.remove('show');return;}
   el.innerHTML=matches.map((p,i)=>{
     const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
-    const img=imgs.length?`<img class="sugg-img" src="${imgs[0]}" alt="" onerror="this.src=''">`:'<div class="sugg-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">🛋️</div>';
+    const img=imgs.length?`<img class="sugg-img" src="${thumb(imgs[0],120)}" alt="" loading="lazy" onerror="imgErr(this)">`:'<div class="sugg-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">🛋️</div>';
     return `<div class="sugg-item" onmousedown="openProduct('${p.cod}');closeSuggestions()" data-si="${i}">
       ${img}
       <div class="sugg-info">
@@ -3509,7 +3517,7 @@ function renderRelated(p){const sec=document.getElementById('relatedSection'),gr
 window.addEventListener('scroll',()=>{const btn=document.getElementById('backTop');if(btn)btn.classList.toggle('show',window.scrollY>300);},{passive:true});
 function ppSelectImg(src,el){
   const mi=document.getElementById('ppMainImg');
-  mi.style.transition='none';mi.src=src;
+  mi.removeAttribute('data-fb');mi.onerror=function(){imgErr(mi);};mi.style.transition='none';mi.src=src;
   document.querySelectorAll('.pp-thumb').forEach(t=>t.classList.remove('active'));el.classList.add('active');
 }
 function closeProdutoPage(){
@@ -3591,7 +3599,7 @@ function renderCart(){
   const el=document.getElementById('cartItems');
   if(!cart.length){el.innerHTML='<div class="cart-empty"><span>🛒</span>Seu carrinho está vazio</div>';return;}
   el.innerHTML=cart.map(c=>`<div class="cart-item">
-    <div class="cart-item-img">${c.fotos?`<img src="${c.fotos.split('|')[0].trim()}" onerror="this.style.display='none'">`:' 🛋️'}</div>
+    <div class="cart-item-img">${c.fotos?`<img src="${thumb(c.fotos.split('|')[0].trim(),120)}" loading="lazy" onerror="imgErr(this)">`:' 🛋️'}</div>
     <div class="cart-item-info"><div class="cart-item-name">${c.nome}</div><div class="cart-item-price">${formatPrice(c.preco)}</div></div>
     <div class="cart-item-qty"><button class="qty-btn" onclick="changeQty('${c.cod}',-1)">−</button><span class="qty-num">${c.qty}</span><button class="qty-btn" onclick="changeQty('${c.cod}',1)">+</button></div>
     <button class="cart-remove" onclick="removeFromCart('${c.cod}')">🗑️</button>
@@ -3626,7 +3634,7 @@ function renderFavorites(){
   if(!el)return;
   if(!favorites.length){el.innerHTML='<div class="cart-empty"><span>❤️</span>Nenhum favorito ainda</div>';return;}
   el.innerHTML=favorites.map(p=>`<div class="cart-item">
-    <div class="cart-item-img">${p.fotos?`<img src="${p.fotos.split('|')[0].trim()}" onerror="this.style.display='none'">`:' 🛋️'}</div>
+    <div class="cart-item-img">${p.fotos?`<img src="${thumb(p.fotos.split('|')[0].trim(),120)}" loading="lazy" onerror="imgErr(this)">`:' 🛋️'}</div>
     <div class="cart-item-info"><div class="cart-item-name">${p.nome}</div><div class="cart-item-price">${formatPrice(p.preco)}</div></div>
     <button class="cart-remove" title="Remover" onclick="toggleFavorite('${p.cod}')">🗑️</button>
   </div>`).join('');
