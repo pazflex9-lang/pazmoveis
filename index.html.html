@@ -1624,7 +1624,17 @@ function thumb(url){
   if(url.indexOf('/storage/v1/')===-1)return url;
   return url.split('?')[0].replace('/storage/v1/render/image/public/','/storage/v1/object/public/');
 }
-function imgErr(el){if(el)el.style.display='none';}
+/* Placeholder neutro (SVG inline, sem requisição) para quando nenhuma foto do produto carrega. */
+const IMG_NA='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="#f3f3f3"/><g fill="none" stroke="#c8c8c8" stroke-width="5" stroke-linejoin="round"><rect x="62" y="52" width="76" height="60" rx="6"/><circle cx="84" cy="72" r="7"/><path d="M66 106l22-20 15 13 13-9 18 16"/></g><text x="100" y="142" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" fill="#9a9a9a">Imagem indisponível</text></svg>');
+/* Foto quebrada (muitas capas apontam para sites externos fora do ar): tenta a próxima foto do
+   produto, guardada em data-alt ("url1|url2|..."); se nenhuma carregar, mostra IMG_NA. */
+function imgErr(el){
+  if(!el||el.dataset.na)return;
+  const rest=(el.dataset.alt||'').split('|').filter(Boolean);
+  if(rest.length){el.dataset.alt=rest.slice(1).join('|');el.src=thumb(rest[0]);return;}
+  el.dataset.na='1';el.style.display='';el.src=IMG_NA;
+}
+function _altAttr(imgs){const r=imgs.slice(1).join('|').replace(/"/g,'&quot;');return r?` data-alt="${r}"`:'';}
 function imgLoaded(el){if(!el)return;el.classList.add('loaded');if(el.parentElement)el.parentElement.classList.add('img-loaded');}
 
 /* ══ CARREGAMENTO DAS IMAGENS DOS CARDS ══
@@ -1635,11 +1645,13 @@ function imgLoaded(el){if(!el)return;el.classList.add('loaded');if(el.parentElem
      um pouco antes de entrarem na tela;
    - um MutationObserver registra automaticamente TODA imagem data-src que aparecer no DOM
      (primeiro render, scroll infinito, filtros, carrosséis), inclusive as que já nascem visíveis. */
-function cardImg(url,alt,eager){
-  const src=thumb(url),a=String(alt||'').replace(/"/g,'&quot;');
+// urls: array de fotos do produto (ou uma URL). A 1ª é a capa; as demais ficam em data-alt como reserva.
+function cardImg(urls,alt,eager){
+  const imgs=(Array.isArray(urls)?urls:[urls]).map(s=>String(s||'').trim()).filter(Boolean);
+  const src=thumb(imgs[0]),a=String(alt||'').replace(/"/g,'&quot;'),fb=_altAttr(imgs);
   return eager
-    ?`<img src="${src}" alt="${a}" loading="eager" onload="imgLoaded(this)" onerror="imgErr(this)">`
-    :`<img data-src="${src}" alt="${a}" onload="imgLoaded(this)" onerror="imgErr(this)">`;
+    ?`<img src="${src}" alt="${a}"${fb} loading="eager" onload="imgLoaded(this)" onerror="imgErr(this)">`
+    :`<img data-src="${src}" alt="${a}"${fb} onload="imgLoaded(this)" onerror="imgErr(this)">`;
 }
 const _lazyIO=('IntersectionObserver' in window)?new IntersectionObserver(entries=>{
   entries.forEach(e=>{if(e.isIntersecting)_loadLazyImg(e.target);});
@@ -2064,7 +2076,7 @@ function prodCardHTML(p,badgeLabel='',eager=false){
   const desc=Math.round((1-(p.preco/precoOld))*100);
   return `<div class="prod-card" onclick="openProduct('${p.cod}')">
     <div class="prod-card-img">
-      ${imgs.length?cardImg(imgs[0],p.nome,eager):'<div class="no-img">🛋️</div>'}
+      ${imgs.length?cardImg(imgs,p.nome,eager):'<div class="no-img">🛋️</div>'}
       ${badgeLabel?`<div class="badge-oferta">${badgeLabel}</div>`:''}
     </div>
     <div class="prod-card-body">
@@ -2202,7 +2214,7 @@ function renderAmbienteGrid(cat){
     }
   }
   document.getElementById('ambienteGrid').innerHTML=prods.map(p=>{
-    const img=p.fotos.split('|')[0].trim();
+    const img=p.fotos.split('|');
     return `<div class="ambiente-item" onclick="openProduct('${p.cod}')">
       ${cardImg(img,p.nome,false)}
       <div class="ambiente-item-name">${p.catFilho||p.nome.split(' ').slice(0,2).join(' ')}</div>
@@ -2386,7 +2398,7 @@ function showSearchSuggestions(q){
   if(!matches.length){el.classList.remove('show');return;}
   el.innerHTML=matches.map((p,i)=>{
     const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
-    const img=imgs.length?`<img class="sugg-img" src="${thumb(imgs[0])}" alt="" onerror="imgErr(this)">`:'<div class="sugg-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">🛋️</div>';
+    const img=imgs.length?`<img class="sugg-img" src="${thumb(imgs[0])}" alt=""${_altAttr(imgs)} onerror="imgErr(this)">`:'<div class="sugg-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">🛋️</div>';
     return `<div class="sugg-item" onmousedown="openProduct('${p.cod}');closeSuggestions()" data-si="${i}">
       ${img}
       <div class="sugg-info">
@@ -2503,7 +2515,7 @@ function cardHTML(p,eager=false){
   const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
   return `<div class="product-card" onclick="openProduct('${p.cod}')">
     <div class="card-img-wrap">
-      ${imgs.length?cardImg(imgs[0],p.nome,eager):'<div class="img-placeholder">🛋️</div>'}
+      ${imgs.length?cardImg(imgs,p.nome,eager):'<div class="img-placeholder">🛋️</div>'}
       ${imgs.length>1?`<span class="img-count">+${imgs.length-1}</span>`:''}
       <button class="card-heart-btn${favorites.some(f=>f.cod===p.cod)?' active':''}" data-fav-cod="${p.cod}" onclick="event.stopPropagation();toggleFavorite('${p.cod}')" title="Favoritar">♥</button>
     </div>
@@ -2620,8 +2632,13 @@ function showProdutoPage(p){
   document.getElementById('ppParcel').innerHTML='ou até 12x de <strong>'+formatPrice(parc)+'</strong> sem juros';
   document.getElementById('ppPix').innerHTML=formatPrice(pix)+' <span>NO PIX</span>';
   const mi=document.getElementById('ppMainImg'),thumbsEl=document.getElementById('ppThumbs');
-  if(imgs.length){mi.onerror=function(){imgErr(mi);};mi.src=thumb(imgs[0]);mi.alt=p.nome;thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="pp-thumb${i===0?' active':''}" onclick="ppSelectImg('${thumb(src)}',this)"><img src="${thumb(src)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');}
-  else{mi.src='';thumbsEl.innerHTML='<div style="font-size:44px;color:var(--gray-300)">🛋️</div>';}
+  // Imagem principal: começa pela 1ª foto e, se ela falhar, imgErr() avança pelas próximas (data-alt)
+  // até uma carregar; se nenhuma carregar, mostra o placeholder. O elemento é reaproveitado entre produtos,
+  // então o estado do produto anterior (placeholder/oculto) é limpo aqui.
+  mi.onerror=function(){imgErr(mi);};mi.onload=_ppSyncActiveThumb;
+  mi.removeAttribute('data-na');mi.style.display='';mi.alt=p.nome;
+  if(imgs.length){mi.dataset.alt=imgs.slice(1).join('|');mi.src=thumb(imgs[0]);thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="pp-thumb${i===0?' active':''}" data-src-full="${thumb(src)}" onclick="ppSelectImg('${thumb(src)}',this)"><img src="${thumb(src)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');}
+  else{mi.dataset.alt='';mi.dataset.na='1';mi.src=IMG_NA;thumbsEl.innerHTML='<div style="font-size:44px;color:var(--gray-300)">🛋️</div>';}
   const db=document.getElementById('ppDescBox');if(p.descricao){document.getElementById('ppDesc').textContent=p.descricao;db.style.display='block';}else db.style.display='none';
   const dimsBox=document.getElementById('ppDimsBox');
   if(p.dimensoes){const dims=p.dimensoes.split('|').map(d=>d.trim()).filter(Boolean);document.getElementById('ppDims').innerHTML=dims.map(d=>{const pts=d.split(':');return`<div class="pp-dim"><div class="lbl">${pts[0]||''}</div><div class="val">${pts[1]||d}</div></div>`;}).join('');dimsBox.style.display='block';}else dimsBox.style.display='none';
@@ -2643,8 +2660,14 @@ function renderRelated(p){const sec=document.getElementById('relatedSection'),gr
 window.addEventListener('scroll',()=>{const btn=document.getElementById('backTop');if(btn)btn.classList.toggle('show',window.scrollY>300);},{passive:true});
 function ppSelectImg(src,el){
   const mi=document.getElementById('ppMainImg');
-  mi.removeAttribute('data-fb');mi.onerror=function(){imgErr(mi);};mi.style.transition='none';mi.src=src;
+  mi.removeAttribute('data-na');mi.style.display='';mi.onerror=function(){imgErr(mi);};mi.style.transition='none';mi.src=src;
   document.querySelectorAll('.pp-thumb').forEach(t=>t.classList.remove('active'));el.classList.add('active');
+}
+// Quando a principal cai para outra foto (capa quebrada), destaca a miniatura da foto que realmente carregou.
+function _ppSyncActiveThumb(){
+  const mi=document.getElementById('ppMainImg');if(!mi||mi.dataset.na)return;
+  const t=[...document.querySelectorAll('.pp-thumb[data-src-full]')].find(x=>x.dataset.srcFull===mi.getAttribute('src'));
+  if(t&&!t.classList.contains('active')){document.querySelectorAll('.pp-thumb').forEach(x=>x.classList.remove('active'));t.classList.add('active');}
 }
 function closeProdutoPage(){
   document.getElementById('produtoPage').classList.remove('show');document.body.style.overflow='';
@@ -2725,7 +2748,7 @@ function renderCart(){
   const el=document.getElementById('cartItems');
   if(!cart.length){el.innerHTML='<div class="cart-empty"><span>🛒</span>Seu carrinho está vazio</div>';return;}
   el.innerHTML=cart.map(c=>`<div class="cart-item">
-    <div class="cart-item-img">${c.fotos?`<img src="${thumb(c.fotos.split('|')[0].trim())}" onerror="imgErr(this)">`:' 🛋️'}</div>
+    <div class="cart-item-img">${c.fotos?`<img src="${thumb(c.fotos.split('|')[0].trim())}"${_altAttr(c.fotos.split('|').map(x=>x.trim()).filter(Boolean))} onerror="imgErr(this)">`:' 🛋️'}</div>
     <div class="cart-item-info"><div class="cart-item-name">${c.nome}</div><div class="cart-item-price">${formatPrice(c.preco)}</div></div>
     <div class="cart-item-qty"><button class="qty-btn" onclick="changeQty('${c.cod}',-1)">−</button><span class="qty-num">${c.qty}</span><button class="qty-btn" onclick="changeQty('${c.cod}',1)">+</button></div>
     <button class="cart-remove" onclick="removeFromCart('${c.cod}')">🗑️</button>
@@ -2760,7 +2783,7 @@ function renderFavorites(){
   if(!el)return;
   if(!favorites.length){el.innerHTML='<div class="cart-empty"><span>❤️</span>Nenhum favorito ainda</div>';return;}
   el.innerHTML=favorites.map(p=>`<div class="cart-item">
-    <div class="cart-item-img">${p.fotos?`<img src="${thumb(p.fotos.split('|')[0].trim())}" onerror="imgErr(this)">`:' 🛋️'}</div>
+    <div class="cart-item-img">${p.fotos?`<img src="${thumb(p.fotos.split('|')[0].trim())}"${_altAttr(p.fotos.split('|').map(x=>x.trim()).filter(Boolean))} onerror="imgErr(this)">`:' 🛋️'}</div>
     <div class="cart-item-info"><div class="cart-item-name">${p.nome}</div><div class="cart-item-price">${formatPrice(p.preco)}</div></div>
     <button class="cart-remove" title="Remover" onclick="toggleFavorite('${p.cod}')">🗑️</button>
   </div>`).join('');
