@@ -1650,11 +1650,27 @@ function _loadLazyImg(img){
   img.removeAttribute('data-src');img.src=s;
 }
 function observeLazyImgs(){
+  let found=false;
   document.querySelectorAll('img[data-src]').forEach(img=>{
-    if(img._lzObs)return;img._lzObs=true;
+    if(img._lzObs)return;img._lzObs=true;found=true;
     if(_lazyIO)_lazyIO.observe(img);else _loadLazyImg(img);
   });
+  if(found)scheduleLazyFlush();
 }
+/* Rede de segurança: o observer sozinho não basta. Dentro dos carrosséis (no celular são containers
+   com overflow-x:auto) a interseção é recortada pelo próprio carrossel, então o rootMargin não vale na
+   horizontal e cards que passam num swipe rápido podem ficar com data-src para sempre. Por isso, ~1.5s
+   depois de cada render (tempo para as imagens visíveis/eager saírem primeiro), qualquer img[data-src]
+   que sobrou recebe src, com prioridade baixa para não competir com as visíveis. */
+let _lazyFlushTimer=null;
+function flushLazyImgs(){
+  document.querySelectorAll('img[data-src]').forEach(img=>{img.fetchPriority='low';_loadLazyImg(img);});
+}
+function scheduleLazyFlush(){
+  clearTimeout(_lazyFlushTimer);
+  _lazyFlushTimer=setTimeout(()=>(window.requestIdleCallback||setTimeout)(flushLazyImgs,{timeout:1000}),1500);
+}
+window.addEventListener('load',scheduleLazyFlush);
 let _lazyScanQueued=false;
 new MutationObserver(()=>{
   if(_lazyScanQueued)return;_lazyScanQueued=true;
