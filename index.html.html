@@ -96,7 +96,7 @@ header{background:#fff;border-bottom:1px solid var(--gray-200);position:sticky;t
 }
 .sugg-item:last-child{border-bottom:none}
 .sugg-item:hover,.sugg-item.focused{background:var(--gray-50)}
-.sugg-img{width:46px;height:46px;object-fit:cover;border-radius:8px;flex-shrink:0;background:var(--gray-100)}
+.sugg-img{width:46px;height:46px;object-fit:contain;border-radius:8px;flex-shrink:0;background:#fff}
 .sugg-info{flex:1;min-width:0}
 .sugg-name{font-size:13px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sugg-price{font-size:12px;color:var(--blue);font-weight:800;margin-top:2px}
@@ -218,7 +218,7 @@ header{background:#fff;border-bottom:1px solid var(--gray-200);position:sticky;t
 .pedido-items{border-top:1px solid var(--gray-100);padding-top:10px;margin-bottom:12px}
 .pedido-item-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--gray-100)}
 .pedido-item-row:last-child{border-bottom:none}
-.pedido-item-img{width:40px;height:40px;border-radius:6px;object-fit:cover;background:var(--gray-100);flex-shrink:0}
+.pedido-item-img{width:40px;height:40px;border-radius:6px;object-fit:contain;background:#fff;flex-shrink:0}
 .pedido-item-info{flex:1;min-width:0}
 .pedido-item-name{font-size:12px;font-weight:700;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pedido-item-qty{font-size:11px;color:var(--gray-500);margin-top:2px}
@@ -400,9 +400,12 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
   transition:box-shadow .2s,transform .2s;
 }
 .prod-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1);transform:translateY(-2px)}
-.prod-card-img{position:relative;width:100%;aspect-ratio:1;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.prod-card-img{position:relative;width:100%;aspect-ratio:1;background:#f0f0f0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .prod-card-img img{width:100%;height:100%;object-fit:contain;object-position:center;transition:transform .35s}
 .prod-card:hover .prod-card-img img{transform:scale(1.04)}
+/* placeholder: cinza enquanto a foto carrega, branco depois (imgLoaded); img ainda sem src fica invisível */
+.prod-card-img.img-loaded,.card-img-wrap.img-loaded{background:#fff}
+img[data-src]{visibility:hidden}
 .prod-card-img .no-img{font-size:52px;color:var(--gray-300)}
 .badge-oferta{
   position:absolute;top:10px;left:10px;
@@ -442,7 +445,7 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
   transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column;
 }
 .product-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1);transform:translateY(-2px)}
-.card-img-wrap{position:relative;width:100%;aspect-ratio:1;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-img-wrap{position:relative;width:100%;aspect-ratio:1;background:#f0f0f0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .card-img-wrap img{width:100%;height:100%;object-fit:contain;object-position:center;transition:transform .35s}
 .product-card:hover .card-img-wrap img{transform:scale(1.04)}
 .img-placeholder{font-size:52px;color:var(--gray-300)}
@@ -495,7 +498,8 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 .ambiente-tab:hover:not(.active){background:var(--gray-100)}
 .ambiente-grid{display:flex;justify-content:center;gap:28px;flex-wrap:wrap}
 .ambiente-item{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;width:160px}
-.ambiente-item img{width:140px;height:140px;object-fit:contain}
+.ambiente-item img{width:140px;height:140px;object-fit:contain;background:#f0f0f0}
+.ambiente-item img.loaded{background:#fff}
 .ambiente-item-name{font-size:14px;font-weight:700;color:var(--gray-800);text-align:center}
 .btn-ver-mais{display:flex;align-items:center;justify-content:center;margin:28px auto 0;background:var(--blue-dark);color:#fff;border:none;border-radius:50px;padding:12px 36px;font-size:15px;font-weight:800;cursor:pointer;font-family:var(--font);transition:background .2s}
 .btn-ver-mais:hover{background:#083B8A}
@@ -564,7 +568,7 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 .bubbles-track::-webkit-scrollbar{display:none}
 .bubble{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;flex-shrink:0;padding:0 8px}
 .bubble-img{width:88px;height:88px;border-radius:50%;overflow:hidden;border:3px solid var(--gray-200);transition:border-color .2s,transform .2s}
-.bubble-img img{width:100%;height:100%;object-fit:cover}
+.bubble-img img{width:100%;height:100%;object-fit:contain;background:#fff}
 .bubble-label{font-size:12px;font-weight:800;color:var(--gray-700);text-align:center;max-width:90px}
 .bubble:hover .bubble-img{border-color:var(--blue);transform:scale(1.06)}
 .bubble.active .bubble-img{border-color:var(--blue);border-width:4px}
@@ -646,7 +650,7 @@ nav{background:#fff;border-bottom:1px solid var(--gray-200);position:relative}
 .cart-empty span{font-size:44px;display:block;margin-bottom:10px}
 .cart-item{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--gray-100);align-items:center}
 .cart-item-img{width:56px;height:56px;background:var(--gray-100);border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gray-300)}
-.cart-item-img img{width:100%;height:100%;object-fit:cover}
+.cart-item-img img{width:100%;height:100%;object-fit:contain;background:#fff}
 .cart-item-info{flex:1;min-width:0}
 .cart-item-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cart-item-price{font-size:14px;color:var(--red);font-weight:900;margin-top:3px}
@@ -2516,44 +2520,52 @@ footer{background:#fff;border-top:1px solid var(--gray-200);padding:32px 24px 0;
 const SUPA_URL='https://dhsjxyuecrjsoneevxkx.supabase.co';
 const SUPA_KEY='sb_publishable_jb7bGFEqMpwp2_9WEysEkA_IfVrw9lS';
 const SH={'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Content-Type':'application/json'};
-/* ══ MINIATURA (economia de banda) ══
-   Reescreve URLs do Storage público do Supabase para a versão redimensionada/comprimida
-   (endpoint render/image, disponível no plano Pro). Serve imagens pequenas nas listagens em
-   vez do arquivo cheio, cortando o egress. URLs que não são do Storage passam sem alteração.
-   Passando só "width", o Supabase mantém a altura ORIGINAL da foto e corta as laterais até
-   caber nessa largura (crop, não escala) — em foto paisagem isso corta quase tudo. Por isso:
-   square=true pede width+height iguais com resize=contain (quadro quadrado, ex: cards e
-   miniaturas da galeria); square='fit' pede só resize=contain sem forçar altura (escala a foto
-   toda proporcionalmente, sem cortar e sem virar quadrado — usado na imagem grande única). */
-/* USE_IMAGE_TRANSFORM=false: plano Supabase atual é FREE, o endpoint /render/image/
-   retorna 403 nesse plano. Por isso thumb() serve o arquivo original (/object/public/),
-   sem redimensionamento. Se o projeto for para o plano Pro, basta trocar para true
-   para voltar a servir miniaturas redimensionadas/comprimidas. */
-const USE_IMAGE_TRANSFORM=false;
-
-function thumb(url,w,q,square){
+/* ══ URL DA IMAGEM ══
+   Sempre o arquivo ORIGINAL do Storage (/object/public/), sem parâmetros. O redimensionador
+   on-demand (/render/image/) era lento (~700ms) e engasgava com muitas imagens simultâneas,
+   deixando cards brancos. URLs que não são do Storage do Supabase passam sem alteração.
+   Argumentos extras de chamadas antigas (largura, qualidade...) são ignorados. */
+function thumb(url){
   if(!url||typeof url!=='string')return url||'';
-  const i=url.indexOf('/storage/v1/object/public/');
-  if(i===-1)return url;
-  const base=url.split('?')[0];
-  if(!USE_IMAGE_TRANSFORM)return base;
-  const renderBase=base.replace('/storage/v1/object/public/','/storage/v1/render/image/public/');
-  const width=w||400;
-  if(square==='fit')return `${renderBase}?width=${width}&resize=contain&quality=${q||70}`;
-  if(square)return `${renderBase}?width=${width}&height=${width}&resize=contain&quality=${q||70}`;
-  return `${renderBase}?width=${width}&quality=${q||70}`;
+  if(url.indexOf('/storage/v1/')===-1)return url;
+  return url.split('?')[0].replace('/storage/v1/render/image/public/','/storage/v1/object/public/');
 }
-/* Se a miniatura (render/image) falhar, tenta o arquivo original (object/public) antes de esconder.
-   Garante que nenhuma foto suma caso a transformação de imagem esteja indisponível. */
-function imgErr(el){
-  if(!el)return;
-  if(!el.dataset.fb && el.src.indexOf('/render/image/public/')>-1){
-    el.dataset.fb='1';
-    el.src=el.src.split('?')[0].replace('/render/image/public/','/object/public/');
-    return;
-  }
-  el.style.display='none';
+function imgErr(el){if(el)el.style.display='none';}
+function imgLoaded(el){if(!el)return;el.classList.add('loaded');if(el.parentElement)el.parentElement.classList.add('img-loaded');}
+
+/* ══ CARREGAMENTO DAS IMAGENS DOS CARDS ══
+   Não usa loading="lazy" nativo: o navegador decide sozinho quando pedir cada imagem e, com
+   muitos cards na tela, deixava imagens visíveis sem requisição (card branco). Em vez disso:
+   - as primeiras imagens de cada listagem nascem com src direto (eager);
+   - as demais nascem com data-src e um IntersectionObserver (rootMargin 600px) troca para src
+     um pouco antes de entrarem na tela;
+   - um MutationObserver registra automaticamente TODA imagem data-src que aparecer no DOM
+     (primeiro render, scroll infinito, filtros, carrosséis), inclusive as que já nascem visíveis. */
+function cardImg(url,alt,eager){
+  const src=thumb(url),a=String(alt||'').replace(/"/g,'&quot;');
+  return eager
+    ?`<img src="${src}" alt="${a}" loading="eager" onload="imgLoaded(this)" onerror="imgErr(this)">`
+    :`<img data-src="${src}" alt="${a}" onload="imgLoaded(this)" onerror="imgErr(this)">`;
 }
+const _lazyIO=('IntersectionObserver' in window)?new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)_loadLazyImg(e.target);});
+},{rootMargin:'600px 600px'}):null;
+function _loadLazyImg(img){
+  if(_lazyIO)_lazyIO.unobserve(img);
+  const s=img.dataset.src;if(!s)return;
+  img.removeAttribute('data-src');img.src=s;
+}
+function observeLazyImgs(){
+  document.querySelectorAll('img[data-src]').forEach(img=>{
+    if(img._lzObs)return;img._lzObs=true;
+    if(_lazyIO)_lazyIO.observe(img);else _loadLazyImg(img);
+  });
+}
+let _lazyScanQueued=false;
+new MutationObserver(()=>{
+  if(_lazyScanQueued)return;_lazyScanQueued=true;
+  Promise.resolve().then(()=>{_lazyScanQueued=false;observeLazyImgs();});
+}).observe(document.documentElement,{childList:true,subtree:true});
 const supa={
   async get(t,p=''){const r=await fetch(`${SUPA_URL}/rest/v1/${t}?${p}`,{headers:{...SH,'Range':'0-9999','Prefer':'count=none'}});return r.ok?r.json():[]},
   async getConfig(){const rows=await this.get('configuracoes','select=chave,valor');const cfg={};rows.forEach(r=>cfg[r.chave]=r.valor);return cfg},
@@ -2564,6 +2576,7 @@ const supa={
 /* ══ ESTADO ══ */
 let allProducts=[],filteredProds=[],currentCat='',currentSubCat='',currentPage=1;
 const PER_PAGE=50; // tamanho do bloco renderizado por vez no scroll infinito
+const EAGER_IMGS=15; // primeiras imagens da grade carregadas na hora, sem esperar o observer
 let renderedCount=0,_loadingMoreProds=false;
 let WHATSAPP='5571999999999',cart=[],favorites=JSON.parse(localStorage.getItem('paz_favs')||'[]'),hiddenCats=new Set(),categoryNames={'Outros':'Estofados'},banners=[];
 let currentAmbienteCat='';
@@ -2931,14 +2944,14 @@ function carouselMove(dir){if(!banners.length)return;carouselGo((carouselIdx+dir
 
 /* ══ CARD DE PRODUTO (estilo Baianão) ══ */
 function formatPrice(v){return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
-function prodCardHTML(p,badgeLabel=''){
+function prodCardHTML(p,badgeLabel='',eager=false){
   const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
   const pix=p.preco*0.95;const parc=p.preco/12;
   const precoOld=p.preco*1.15; // simulado
   const desc=Math.round((1-(p.preco/precoOld))*100);
   return `<div class="prod-card" onclick="openProduct('${p.cod}')">
     <div class="prod-card-img">
-      ${imgs.length?`<img src="${thumb(imgs[0],400,70,true)}" alt="${p.nome}" loading="lazy" onerror="imgErr(this)">`:'<div class="no-img">🛋️</div>'}
+      ${imgs.length?cardImg(imgs[0],p.nome,eager):'<div class="no-img">🛋️</div>'}
       ${badgeLabel?`<div class="badge-oferta">${badgeLabel}</div>`:''}
     </div>
     <div class="prod-card-body">
@@ -2980,7 +2993,7 @@ function renderOfertasTab(tab){
   ofertasCurrentTab=tab;ofertasCarouselIdx=0;
   const prods=getDestProds(destOfertasDia)||allProducts.filter(p=>p.preco>0).slice(0,12);
   const inner=document.getElementById('ofertasInner');
-  inner.innerHTML=prods.map(p=>prodCardHTML(p,'🔥 OFERTA DO DIA')).join('');
+  inner.innerHTML=prods.map((p,i)=>prodCardHTML(p,'🔥 OFERTA DO DIA',i<5)).join('');
   inner.style.transform='translateX(0)';
   const visible=Math.floor(document.getElementById('ofertasCarousel').offsetWidth/296)||4;
   const pages=Math.max(1,Math.min(8,prods.length-visible+1));
@@ -3078,7 +3091,7 @@ function renderAmbienteGrid(cat){
   document.getElementById('ambienteGrid').innerHTML=prods.map(p=>{
     const img=p.fotos.split('|')[0].trim();
     return `<div class="ambiente-item" onclick="openProduct('${p.cod}')">
-      <img src="${thumb(img,400)}" alt="${p.nome}" loading="lazy" onerror="imgErr(this)">
+      ${cardImg(img,p.nome,false)}
       <div class="ambiente-item-name">${p.catFilho||p.nome.split(' ').slice(0,2).join(' ')}</div>
     </div>`;
   }).join('');
@@ -3095,7 +3108,7 @@ function renderCatBubbles(){
     const cfgKey='cat_img_'+cat.replace(/[^a-zA-Z0-9]/g,'_');
     const imgUrl=(window._siteConfig&&window._siteConfig[cfgKey])||catFotos[cat]||'';
     return `<div class="bubble" onclick="filterByCat('${cat.replace(/'/g,"\\'")}',event)">
-      <div class="bubble-img"><img src="${thumb(imgUrl,250)}" alt="${cat}" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f0f0f0;\\'>🛋️</div>'"></div>
+      <div class="bubble-img"><img src="${thumb(imgUrl)}" alt="${cat}" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f0f0f0;\\'>🛋️</div>'"></div>
       <span class="bubble-label">${categoryNames[cat]||cat}</span>
     </div>`;
   }).join('');
@@ -3260,7 +3273,7 @@ function showSearchSuggestions(q){
   if(!matches.length){el.classList.remove('show');return;}
   el.innerHTML=matches.map((p,i)=>{
     const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
-    const img=imgs.length?`<img class="sugg-img" src="${thumb(imgs[0],120)}" alt="" loading="lazy" onerror="imgErr(this)">`:'<div class="sugg-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">🛋️</div>';
+    const img=imgs.length?`<img class="sugg-img" src="${thumb(imgs[0])}" alt="" onerror="imgErr(this)">`:'<div class="sugg-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">🛋️</div>';
     return `<div class="sugg-item" onmousedown="openProduct('${p.cod}');closeSuggestions()" data-si="${i}">
       ${img}
       <div class="sugg-info">
@@ -3364,20 +3377,20 @@ function renderPage(){
     document.getElementById('pagination').innerHTML='';renderedCount=0;return;
   }
   renderedCount=Math.min(PER_PAGE,filteredProds.length);
-  grid.innerHTML=filteredProds.slice(0,renderedCount).map(p=>cardHTML(p)).join('');
+  grid.innerHTML=filteredProds.slice(0,renderedCount).map((p,i)=>cardHTML(p,i<EAGER_IMGS)).join('');
   renderPagination();
   document.getElementById('sectionTitle').textContent=currentSubCat||currentCat||'Todos os Produtos';
   const _bc=document.getElementById('catalogBc'),_bcC=document.getElementById('bcCatLink'),_bcS=document.getElementById('bcSubLink'),_bcSp=document.getElementById('bcSubSep');
   if(_bc&&_bcC){if(currentCat){_bc.classList.add('show');_bcC.textContent=currentCat;_bcC.onclick=()=>{currentSubCat='';currentPage=1;applyFilters();};if(currentSubCat&&_bcS){_bcS.textContent=currentSubCat;_bcS.style.display='';if(_bcSp)_bcSp.style.display='';}else{if(_bcS)_bcS.style.display='none';if(_bcSp)_bcSp.style.display='none';}}else _bc.classList.remove('show');}
   if(_initialRender){_initialRender=false;}else{window.scrollTo({top:document.getElementById('statsBar').offsetTop-70,behavior:'smooth'});}
 }
-function cardHTML(p){
+function cardHTML(p,eager=false){
   const pix=p.preco*0.95,parc=p.preco/12;
   const precoOld=p.preco*1.12,desc=Math.round((1-(p.preco/precoOld))*100);
   const imgs=p.fotos?p.fotos.split('|').map(s=>s.trim()).filter(Boolean):[];
   return `<div class="product-card" onclick="openProduct('${p.cod}')">
     <div class="card-img-wrap">
-      ${imgs.length?`<img src="${thumb(imgs[0],400,70,true)}" alt="${p.nome}" loading="lazy" onerror="imgErr(this)">`:'<div class="img-placeholder">🛋️</div>'}
+      ${imgs.length?cardImg(imgs[0],p.nome,eager):'<div class="img-placeholder">🛋️</div>'}
       ${imgs.length>1?`<span class="img-count">+${imgs.length-1}</span>`:''}
       <button class="card-heart-btn${favorites.some(f=>f.cod===p.cod)?' active':''}" data-fav-cod="${p.cod}" onclick="event.stopPropagation();toggleFavorite('${p.cod}')" title="Favoritar">♥</button>
     </div>
@@ -3494,7 +3507,7 @@ function showProdutoPage(p){
   document.getElementById('ppParcel').innerHTML='ou até 12x de <strong>'+formatPrice(parc)+'</strong> sem juros';
   document.getElementById('ppPix').innerHTML=formatPrice(pix)+' <span>NO PIX</span>';
   const mi=document.getElementById('ppMainImg'),thumbsEl=document.getElementById('ppThumbs');
-  if(imgs.length){mi.onerror=function(){imgErr(mi);};mi.src=thumb(imgs[0],800,70,'fit');mi.alt=p.nome;thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="pp-thumb${i===0?' active':''}" onclick="ppSelectImg('${thumb(src,800,70,'fit')}',this)"><img src="${thumb(src,150,70,true)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');}
+  if(imgs.length){mi.onerror=function(){imgErr(mi);};mi.src=thumb(imgs[0]);mi.alt=p.nome;thumbsEl.innerHTML=imgs.map((src,i)=>`<div class="pp-thumb${i===0?' active':''}" onclick="ppSelectImg('${thumb(src)}',this)"><img src="${thumb(src)}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');}
   else{mi.src='';thumbsEl.innerHTML='<div style="font-size:44px;color:var(--gray-300)">🛋️</div>';}
   const db=document.getElementById('ppDescBox');if(p.descricao){document.getElementById('ppDesc').textContent=p.descricao;db.style.display='block';}else db.style.display='none';
   const dimsBox=document.getElementById('ppDimsBox');
@@ -3599,7 +3612,7 @@ function renderCart(){
   const el=document.getElementById('cartItems');
   if(!cart.length){el.innerHTML='<div class="cart-empty"><span>🛒</span>Seu carrinho está vazio</div>';return;}
   el.innerHTML=cart.map(c=>`<div class="cart-item">
-    <div class="cart-item-img">${c.fotos?`<img src="${thumb(c.fotos.split('|')[0].trim(),120)}" loading="lazy" onerror="imgErr(this)">`:' 🛋️'}</div>
+    <div class="cart-item-img">${c.fotos?`<img src="${thumb(c.fotos.split('|')[0].trim())}" onerror="imgErr(this)">`:' 🛋️'}</div>
     <div class="cart-item-info"><div class="cart-item-name">${c.nome}</div><div class="cart-item-price">${formatPrice(c.preco)}</div></div>
     <div class="cart-item-qty"><button class="qty-btn" onclick="changeQty('${c.cod}',-1)">−</button><span class="qty-num">${c.qty}</span><button class="qty-btn" onclick="changeQty('${c.cod}',1)">+</button></div>
     <button class="cart-remove" onclick="removeFromCart('${c.cod}')">🗑️</button>
@@ -3634,7 +3647,7 @@ function renderFavorites(){
   if(!el)return;
   if(!favorites.length){el.innerHTML='<div class="cart-empty"><span>❤️</span>Nenhum favorito ainda</div>';return;}
   el.innerHTML=favorites.map(p=>`<div class="cart-item">
-    <div class="cart-item-img">${p.fotos?`<img src="${thumb(p.fotos.split('|')[0].trim(),120)}" loading="lazy" onerror="imgErr(this)">`:' 🛋️'}</div>
+    <div class="cart-item-img">${p.fotos?`<img src="${thumb(p.fotos.split('|')[0].trim())}" onerror="imgErr(this)">`:' 🛋️'}</div>
     <div class="cart-item-info"><div class="cart-item-name">${p.nome}</div><div class="cart-item-price">${formatPrice(p.preco)}</div></div>
     <button class="cart-remove" title="Remover" onclick="toggleFavorite('${p.cod}')">🗑️</button>
   </div>`).join('');
